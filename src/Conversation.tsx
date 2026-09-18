@@ -5,32 +5,41 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSocial } from './social';
 import { appendMessage, canMessage, PEOPLE, Workout, workoutSummary } from './socialModel';
 import { C, s } from './styles';
+import { useWorkoutFeed } from './workoutFeed';
+import { publishWorkout } from './workoutFeedModel';
 
-export function ModalFrame({ title, subtitle, close, children }: { title: string; subtitle?: string; close: () => void; children: React.ReactNode }) {
+export function ModalFrame({ title, subtitle, close, children, closeLabel = 'Close conversation' }: { title: string; subtitle?: string; close: () => void; children: React.ReactNode; closeLabel?: string }) {
   return <Modal visible animationType="slide" onRequestClose={close} transparent={Platform.OS === 'web'}>
     <KeyboardAvoidingView style={cs.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={cs.frame}>
-        <View style={cs.header}><Pressable accessibilityRole="button" accessibilityLabel="Close conversation" onPress={close} style={s.iconButton}><Ionicons name="arrow-back" size={24} color={C.ink}/></Pressable><View style={{ flex: 1 }}><Text style={cs.title}>{title}</Text>{!!subtitle && <Text style={s.small}>{subtitle}</Text>}</View></View>
+        <View style={cs.header}><Pressable accessibilityRole="button" accessibilityLabel={closeLabel} onPress={close} style={s.iconButton}><Ionicons name="arrow-back" size={24} color={C.ink}/></Pressable><View style={{ flex: 1 }}><Text style={cs.title}>{title}</Text>{!!subtitle && <Text style={s.small}>{subtitle}</Text>}</View></View>
         {children}
       </SafeAreaView>
     </KeyboardAvoidingView>
   </Modal>;
 }
-export function WorkoutShare({ workout, close, onShared }: { workout: Workout; close: () => void; onShared: () => void }) {
+export function WorkoutShare({ workout, close, onShared }: { workout: Workout; close: () => void; onShared: (destination: 'feed' | 'conversation') => void }) {
   const { data, update, ready, error } = useSocial(); const [target, setTarget] = useState('');
+  const feed = useWorkoutFeed();
+  const [caption, setCaption] = useState(feed.data.shares.find(w => w.id === `own-${workout.id}`)?.caption || '');
+  const allowed = !!target && ready && feed.ready && (target === 'public-feed' || canMessage(data, target));
   const targets = [...data.groups.map(g => ({ id: g.id, name: g.name })), ...PEOPLE.filter(p => data.connections.includes(p.id)).map(p => ({ id: `dm:${p.id}`, name: p.name }))];
-  return <ModalFrame title="Share your effort" subtitle="Choose one conversation" close={close}>
+  return <ModalFrame title="Share your effort" subtitle="Choose who gets to see this win" closeLabel="Close workout sharing" close={close}>
     <ScrollView contentContainerStyle={{ padding: 22, gap: 18 }}>
       <View style={cs.workout}><Ionicons name="barbell-outline" size={28} color={C.blue}/><Text style={cs.title}>{workout.exercise}</Text><Text style={s.body}>{workoutSummary(workout)}</Text></View>
-      <Text style={s.small}>Only this summary will be shared. Your private notes stay with you. Messages are local in this demo.</Text>
-      {targets.length ? targets.map(t => <Pressable key={t.id} accessibilityRole="radio" accessibilityState={{ checked: target === t.id }} onPress={() => setTarget(t.id)} style={[cs.target, target === t.id && { borderColor: C.blue, backgroundColor: C.pale }]}><Text style={[s.bold, { flex: 1 }]}>{t.name}</Text><Ionicons name={target === t.id ? 'radio-button-on' : 'radio-button-off'} color={C.blue} size={21}/></Pressable>) : <Text style={s.body}>Connect with a demo friend or join a group in Community, then come back to share.</Text>}
+      <Text style={s.small}>Your private notes stay with you. Shares and messages remain on this device in the demo.</Text>
+      <Pressable accessibilityRole="radio" accessibilityLabel="Public workout feed" accessibilityState={{ checked: target === 'public-feed' }} aria-checked={target === 'public-feed'} onPress={() => setTarget('public-feed')} style={[cs.target, target === 'public-feed' && { borderColor: C.blue, backgroundColor: C.pale }]}><Ionicons name="globe-outline" color={C.blue} size={23}/><View style={{ flex: 1 }}><Text style={s.bold}>Public workout feed</Text><Text style={s.small}>Your summary and caption on Home</Text></View><Ionicons name={target === 'public-feed' ? 'radio-button-on' : 'radio-button-off'} color={C.blue} size={21}/></Pressable>
+      {target === 'public-feed' && <View style={{ gap: 10 }}><Text style={s.bold}>Add a public caption (optional)</Text><TextInput accessibilityLabel="Public workout caption" multiline maxLength={500} value={caption} onChangeText={setCaption} placeholder="A win worth sharing…" placeholderTextColor={C.muted} style={[s.input, { minHeight: 88, textAlignVertical: 'top' }]}/><Text style={s.small}>{caption.length}/500 · You can unshare from Home anytime.</Text></View>}
+      <Text style={s.bold}>Or send to one conversation</Text>
+      {targets.length ? targets.map(t => <Pressable key={t.id} accessibilityRole="radio" accessibilityState={{ checked: target === t.id }} aria-checked={target === t.id} onPress={() => setTarget(t.id)} style={[cs.target, target === t.id && { borderColor: C.blue, backgroundColor: C.pale }]}><Text style={[s.bold, { flex: 1 }]}>{t.name}</Text><Ionicons name={target === t.id ? 'radio-button-on' : 'radio-button-off'} color={C.blue} size={21}/></Pressable>) : <Text style={s.body}>Connect with a friend or join a group in Community to share privately in a conversation.</Text>}
       {!!error && <Text accessibilityRole="alert" style={s.small}>{error}</Text>}
+      {!!feed.error && <Text accessibilityRole="alert" style={s.small}>{feed.error}</Text>}
     </ScrollView>
-    <View style={cs.footer}><Pressable disabled={!target || !ready || !canMessage(data, target)} accessibilityRole="button" onPress={() => { update(d => appendMessage(d, target, workoutSummary(workout), true)); onShared(); close(); }} style={[s.button, (!target || !ready || !canMessage(data, target)) && { opacity: .4 }]}><Text style={s.buttonText}>Share to selected conversation</Text></Pressable></View>
+    <View style={cs.footer}><Pressable disabled={!allowed} accessibilityRole="button" onPress={() => { if (!allowed) return; if (target === 'public-feed') { feed.update(d => publishWorkout(d, workout, caption)); onShared('feed'); } else { update(d => appendMessage(d, target, workoutSummary(workout), true)); onShared('conversation'); } close(); }} style={[s.button, !allowed && { opacity: .4 }]}><Text style={s.buttonText}>{target === 'public-feed' ? 'Share to public feed' : 'Share to selected conversation'}</Text></Pressable></View>
   </ModalFrame>;
 }
-export default function Conversation({ thread, close, workouts }: { thread: string; close: () => void; workouts: Workout[] }) {
-  const { data, update, ready, error } = useSocial(); const [draft, setDraft] = useState(''); const [chooseWorkout, setChooseWorkout] = useState(false); const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+export default function Conversation({ thread, close, workouts, initialDraft = '', activityContext }: { thread: string; close: () => void; workouts: Workout[]; initialDraft?: string; activityContext?: string }) {
+  const { data, update, ready, error } = useSocial(); const [draft, setDraft] = useState(initialDraft); const [chooseWorkout, setChooseWorkout] = useState(false); const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [details, setDetails] = useState(false); const [sent, setSent] = useState('');
   const list = useRef<FlatList>(null); const person = PEOPLE.find(p => `dm:${p.id}` === thread); const group = data.groups.find(g => g.id === thread);
   const allowed = canMessage(data, thread); const messages = data.messages[thread] || [];
@@ -38,6 +47,7 @@ export default function Conversation({ thread, close, workouts }: { thread: stri
   function send() { if (!draft.trim() || !allowed) return; update(d => appendMessage(d, thread, draft)); setDraft(''); setSent('Message added to this local conversation.'); }
   return <ModalFrame title={person?.name || group?.name || 'Conversation'} subtitle={person ? `${person.year} · Demo friend` : `${group?.cohort || 'Group'} · Demo chat`} close={close}>
     <View style={cs.disclosure}><Text style={[s.small, { flex: 1 }]}>Only you can see this demo conversation.</Text><Pressable accessibilityRole="button" accessibilityState={{ expanded: details }} onPress={() => setDetails(!details)} style={{ padding: 10 }}><Text style={s.link}>Details</Text></Pressable></View>
+    {!!activityContext && <View style={[cs.detail, { backgroundColor: C.pale, gap: 4 }]}><Text style={s.small}>Replying to a public workout</Text><Text style={s.bold}>{activityContext}</Text><Text style={s.small}>Edit your encouragement below, then send when you’re ready.</Text></View>}
     {details && <View style={cs.detail}><Text style={s.bold}>A little encouragement goes a long way.</Text><Text style={s.small}>Plan a session, share a workout, and keep it welcoming. Sample people do not receive messages or send replies.</Text><Pressable accessibilityRole="button" onPress={() => { update(d => group ? { ...d, groups: d.groups.filter(g => g.id !== thread) } : { ...d, connections: d.connections.filter(id => id !== person?.id) }); close(); }} style={s.secondary}><Text style={[s.link, { padding: 14 }]}>{group ? 'Leave this group' : 'Remove demo connection'}</Text></Pressable></View>}
     <FlatList ref={list} data={messages} keyExtractor={m => m.id} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={cs.messages} onContentSizeChange={() => list.current?.scrollToEnd({ animated: false })}
       ListEmptyComponent={<View style={cs.empty}><Ionicons name="chatbubbles-outline" size={38} color={C.blue}/><Text style={cs.emptyTitle}>{'Every crew starts\nwith a hello.'}</Text><Text style={[s.body, { textAlign: 'center' }]}>Try “Anyone up for a session after class?”</Text></View>}

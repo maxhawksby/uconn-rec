@@ -1,18 +1,22 @@
 import Conversation, { WorkoutShare } from './Conversation';
+import HomeFeed from './HomeFeed';
+import { WorkoutFeedProvider, useWorkoutFeed } from './workoutFeed';
 import { Workout } from './socialModel';
 import { useLocalData } from './useLocalData';
 import { SocialProvider, SocialChoices, useSocial, PEOPLE } from './social';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { createStaticNavigation, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { s, C } from './styles';
+import { RecBrand, RecEmblem } from './RecVisual';
+import RecDiscovery from './RecDiscovery';
 import Onboarding, { WelcomeLoading } from './onboarding/Onboarding';
 import { ProfileProvider, useProfile } from './onboarding/ProfileContext';
-import { INTERESTS, firstName, fullName, initials, suggestedCategories } from './onboarding/model';
+import { INTERESTS, fullName, initials, suggestedCategories } from './onboarding/model';
 
 const photos = { campus: require('../assets/photos/rec-center.jpg'), gym: require('../assets/photos/gym.jpg'), yoga: require('../assets/photos/yoga.jpg'), strength: require('../assets/photos/strength.jpg') };
 type Post = { id: number; name: string; initials: string; text: string; likes: number; photo?: keyof typeof photos };
@@ -48,19 +52,9 @@ function Avatar({ initials, size = 44, blue = false }: { initials: string; size?
 function Sheet({ title, visible, close, children }: { title: string; visible: boolean; close: () => void; children: React.ReactNode }) { return <Modal visible={visible} transparent animationType="fade" onRequestClose={close}><KeyboardAvoidingView style={s.scrim} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={s.sheet}><View style={[s.row, { justifyContent: 'space-between' }]}><Text style={[s.h2, { flex: 1 }]}>{title}</Text><Pressable accessibilityRole="button" accessibilityLabel="Close dialog" onPress={close} style={s.iconButton}><Icon name="close"/></Pressable></View><ScrollView contentContainerStyle={{ gap: 16 }} keyboardShouldPersistTaps="handled">{children}</ScrollView></View></KeyboardAvoidingView></Modal>; }
 
 function HomeScreen() {
-  const social = useSocial();
-  const { profile } = useProfile();
-  const nav = useNavigation<any>(); const { data } = useContext(Store); const [occupancy, setOccupancy] = useState(false);
-  return <Screen><View style={s.brandRow}><Text style={s.wordmark}>UCONN <Text style={{ fontWeight: '400' }}>REC</Text></Text><View style={s.demo}><View style={s.dot}/><Text style={s.demoText}>Demo campus</Text></View></View>
-    <Heading title={'Your place.\nYour people.'} subtitle={`Welcome, ${firstName(profile)}. Make yourself at home.`} action={<Avatar initials={initials(profile)} size={46} blue/>}/>
-    <Pressable accessibilityRole="button" onPress={() => setOccupancy(true)} style={s.occupancy}><View style={s.smallIcon}><Icon name="people-outline" color={C.blue}/></View><View style={{ flex: 1 }}><Text style={s.bold}>How’s the Rec?</Text><Text style={s.small}>Sample occupancy · Storrs</Text></View><View style={s.badge}><View style={s.dot}/><Text style={s.badgeText}>Moderate</Text></View><Icon name="chevron-forward" size={16}/></Pressable>
-    <ImageBackground source={photos.campus} imageStyle={{ borderRadius: 22 }} style={s.hero}><View style={s.heroShade}><View style={s.heroPill}><Icon name="sparkles-outline" color="white" size={14}/><Text style={s.heroPillText}>Better with your pack</Text></View><View><Text style={s.heroTitle}>{'Make today\na Rec day.'}</Text><Text style={s.heroCopy}>Show up for yourself. Stay for the people.</Text><Pressable accessibilityRole="button" onPress={() => nav.navigate('Activity')} style={s.heroButton}><Text style={s.heroButtonText}>Start a workout</Text><Icon name="arrow-forward" size={18}/></Pressable></View></View></ImageBackground>
-    <Section title="Find your next move"/>
-    {!!profile?.interests.length && <View style={{ marginBottom: 14 }}><Text style={s.small}>Made for your interests</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>{INTERESTS.filter(x => profile.interests.includes(x.id)).map(x => <Chip key={x.id} text={x.name} onPress={() => nav.navigate('Classes')}/>)}</ScrollView></View>}<View style={s.row}>{[{ label: 'Log a workout', icon: 'barbell-outline', route: 'Activity' }, { label: 'Find a class', icon: 'calendar-outline', route: 'Classes' }, { label: 'Meet your pack', icon: 'people-outline', route: 'Community' }].map(a => <Pressable accessibilityRole="button" key={a.label} onPress={() => nav.navigate(a.route)} style={s.quick}><Icon name={a.icon as IconName} color={C.blue} size={26}/><Text style={s.quickLabel}>{a.label}</Text></Pressable>)}</View>
-    <Section title="Your people, your pace" action="Community" onPress={() => nav.navigate('Community')}/><Pressable accessibilityRole="button" onPress={() => nav.navigate('Community')} style={[s.workoutCard, { backgroundColor: '#13233A', gap: 12 }]}><Icon name="chatbubbles-outline" color="#DCE8F7" size={30}/><Text style={[s.h2, { color: 'white' }]}>{social.data.groups.length ? social.data.groups[0].name : 'Find a crew that moves like you.'}</Text><Text style={[s.body, { color: '#C2CEDD' }]}>{social.data.connections.length} demo connections · {social.data.groups.length} groups joined</Text><Text style={{ color: '#E0EAFE', fontWeight: '600' }}>Open your community →</Text></Pressable>
-    <Section title="A spot for you" action="All classes" onPress={() => nav.navigate('Classes')}/><Pressable accessibilityRole="button" onPress={() => nav.navigate('Classes')} style={s.classTeaser}><Image source={photos.yoga} style={s.teaserImage}/><View style={{ flex: 1, gap: 5 }}><Text style={s.bold}>Take a breath. Find your flow.</Text><Text style={s.small}>Yoga flow · Today, 12:00 PM</Text><Text style={s.link}>{data.reservations.includes('yoga') ? 'You’re on the list' : '8 spots to make it yours'}</Text></View><Icon name="chevron-forward" size={18}/></Pressable><Text style={s.footerNote}>Same Huskies. Healthier habits.</Text>
-    <Sheet title="Rec Center occupancy" visible={occupancy} close={() => setOccupancy(false)}><Text style={s.body}>Sample occupancy to help imagine a visit. These numbers are not connected to the Rec Center.</Text>{[{ name: 'Weight room', label: 'Moderate', value: 62 }, { name: 'Cardio floor', label: 'Quiet', value: 28 }, { name: 'Courts', label: 'Busy', value: 86 }].map(x => <View key={x.name} style={{ gap: 10 }}><View style={[s.row, { justifyContent: 'space-between' }]}><Text style={s.bold}>{x.name}</Text><Text style={s.small}>{x.label}</Text></View><View style={s.track}><View style={{ width: `${x.value}%`, height: 6, backgroundColor: C.blue, borderRadius: 5 }}/></View></View>)}</Sheet>
-  </Screen>;
+  const nav = useNavigation<any>();
+  const { data, notify } = useContext(Store);
+  return <HomeFeed workouts={data.workouts} navigate={route => nav.navigate(route)} notify={notify}/>;
 }
 function ActivityScreen() {
   const [shareWorkout, setShareWorkout] = useState<Workout | null>(null);
@@ -71,7 +65,7 @@ function ActivityScreen() {
     {mode === 'Strength' ? <><View style={s.setRow}><Text style={[s.tableLabel, { width: 32 }]}>Set</Text><Text style={[s.tableLabel, { flex: 1 }]}>Reps</Text><Text style={[s.tableLabel, { flex: 1 }]}>Weight (lb)</Text><View style={{ width: 36 }}/></View>{sets.map((x, i) => <View style={s.setRow} key={i}><Text style={[s.bold, { width: 32, textAlign: 'center' }]}>{i + 1}</Text><TextInput accessibilityLabel={`Set ${i + 1} reps`} keyboardType="number-pad" value={x.reps} onChangeText={v => setSets(a => a.map((z, n) => n === i ? { ...z, reps: v } : z))} style={s.numberInput}/><TextInput accessibilityLabel={`Set ${i + 1} weight`} keyboardType="decimal-pad" value={x.weight} onChangeText={v => setSets(a => a.map((z, n) => n === i ? { ...z, weight: v } : z))} style={s.numberInput}/><Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${i + 1}`} onPress={() => setSets(a => a.filter((_, n) => n !== i))} style={s.removeButton}><Icon name="close" size={18} color={C.muted}/></Pressable></View>)}<Button title="+ Add set" secondary onPress={() => setSets(a => [...a, { reps: '8', weight: a.at(-1)?.weight || '0' }])}/></> : <><Text style={s.bold}>Duration (minutes)</Text><TextInput accessibilityLabel="Duration in minutes" value={minutes} onChangeText={setMinutes} keyboardType="decimal-pad" style={s.input}/></>}
     <Text style={[s.bold, { marginTop: 24, marginBottom: 10 }]}>How did it feel? <Text style={s.small}>(optional)</Text></Text><TextInput accessibilityLabel="Workout notes" placeholder="A small win worth remembering…" placeholderTextColor={C.muted} multiline value={notes} onChangeText={setNotes} style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]}/><View style={{ marginTop: 20 }}><Button title="Save workout" disabled={!valid} onPress={save}/></View>{!valid && <Text style={s.small}>Use 1–1,000 whole-number reps, 0–5,000 lb, or a duration up to 1,440 minutes.</Text>}</View>
     <Section title="Your recent effort"/><Text style={[s.small, { marginBottom: 14 }]}>Saved privately on this device.</Text>{data.workouts.length ? data.workouts.slice(0, 5).map(w => <View key={w.id} style={s.history}><View style={s.smallIcon}><Icon name="checkmark" color={C.green}/></View><View style={{ flex: 1 }}><Text style={s.bold}>{w.exercise}</Text><Text style={s.small}>{new Date(w.id).toLocaleDateString()}{w.sets ? ` · ${w.sets} sets · ${w.volume.toLocaleString()} lb volume` : ''}</Text>{!!w.entries?.length && <Text style={s.small}>{w.entries.map(e => e.reps + ' × ' + e.weight + ' lb').join(' · ')}</Text>}{!!w.notes && <Text style={s.small}>{w.notes}</Text>}</View><Pressable accessibilityRole="button" accessibilityLabel={"Share " + w.exercise} onPress={() => setShareWorkout(w)} style={s.iconButton}><Icon name="share-outline" color={C.blue}/></Pressable></View>) : <View style={s.empty}><Icon name="barbell-outline" size={30} color={C.muted}/><Text style={s.bold}>Your first workout starts here.</Text><Text style={s.small}>Log a little. Build a habit.</Text></View>}
-    {!!shareWorkout && <WorkoutShare workout={shareWorkout} close={() => setShareWorkout(null)} onShared={() => notify('Workout added to your local conversation.')}/>}
+    {!!shareWorkout && <WorkoutShare workout={shareWorkout} close={() => setShareWorkout(null)} onShared={destination => notify(destination === 'feed' ? 'Workout shared to the public demo feed.' : 'Workout added to your local conversation.')}/>}
     <Sheet title="Choose an exercise" visible={picker} close={() => setPicker(false)}>{['Bench press', 'Squat', 'Deadlift', 'Shoulder press', 'Lat pulldown'].map(x => <Button key={x} title={x} secondary onPress={() => { setExercise(x); setPicker(false); }}/>)}</Sheet></Screen>;
 }
 function ClassesScreen() {
@@ -106,7 +100,8 @@ function CommunityScreen() {
     <Sheet title="Share a little good energy" visible={compose} close={() => setCompose(false)}><Text style={s.small}>Posts stay in this prototype on your device.</Text><TextInput accessibilityLabel="Post text" autoFocus multiline maxLength={500} value={draft} onChangeText={setDraft} placeholder="What’s your small win today?" placeholderTextColor={C.muted} style={[s.input, { minHeight: 140, textAlignVertical: 'top' }]}/><Text style={s.small}>{draft.length}/500</Text><Button title="Add to demo feed" disabled={!draft.trim()} onPress={post}/></Sheet></Screen>;
 }
 function ProfileScreen() {
-  const { data, setData } = useContext(Store);
+  const { data } = useContext(Store);
+  const nav = useNavigation<any>();
   const { profile, edit } = useProfile();
   return <Screen>
     <Heading title="A stronger you." subtitle="More than the numbers."/>
@@ -116,43 +111,44 @@ function ProfileScreen() {
     <View style={[s.workoutCard, { marginTop: 20 }]}><Text style={s.bold}>Student record</Text><Text style={s.body}>{profile?.identity.firstName} {profile?.identity.lastName}</Text><Text style={s.small}>Sample identity. University verification is not connected.</Text><Text style={[s.small, { marginTop: 8 }]}>Preferred first name: {profile?.preferredFirstName || 'Same as student record'}</Text></View>
     <View style={s.stats}><View style={s.stat}><Text style={s.statValue}>{data.workouts.length}</Text><Text style={s.small}>Workouts logged</Text></View><View style={s.stat}><Text style={s.statValue}>{data.reservations.length}</Text><Text style={s.small}>Classes on your list</Text></View></View>
     <Section title="Your comfort comes first"/>
-    <View style={s.workoutCard}><Icon name="shield-checkmark-outline" color={C.blue} size={28}/><Text style={[s.h2, { marginTop: 12 }]}>You choose when you’re visible.</Text><Text style={[s.body, { marginVertical: 12 }]}>Activity sharing starts off. Turning it on previews your preference; this prototype never broadcasts your location or activity.</Text><Button title={data.sharing ? 'Activity sharing: on — turn off' : 'Activity sharing: off — turn on'} secondary onPress={() => setData(d => ({ ...d, sharing: !d.sharing }))}/></View>
+    <View style={s.workoutCard}><Icon name="shield-checkmark-outline" color={C.blue} size={28}/><Text style={[s.h2, { marginTop: 12 }]}>You choose when you’re visible.</Text><Text style={[s.body, { marginVertical: 12 }]}>Every workout starts private. Share a summary from Activity when you’re ready, or use Unshare on your Home card to make it private again. Your workout notes stay with you.</Text><Text style={s.small}>Sharing and conversations stay on this device in the demo.</Text><Button title="View my saved workouts" secondary onPress={() => nav.navigate('Activity')}/></View>
+    <RecDiscovery interests={profile?.interests || []} onAction={route => nav.navigate(route)}/>
     <View style={s.principles}><Text style={s.h2}>Progress at your pace.</Text><Text style={s.body}>Show up, find something you enjoy, and make a connection. No leaderboards. No pressure to keep a streak alive.</Text></View>
     <Button title="Replay welcome & preferences" secondary onPress={() => edit(-1)}/>
     <Text style={s.footerNote}>{'Independent UConn Rec concept · Demo data\nUniversity integration is not connected.'}</Text>
   </Screen>;
 }
 const icons: Record<string, IconName> = { Home: 'home-outline', Activity: 'barbell-outline', Classes: 'calendar-outline', Community: 'people-outline', Profile: 'person-outline' };
-const Tabs = createBottomTabNavigator({ screenOptions: ({ route }) => ({ headerShown: false, tabBarActiveTintColor: C.blue, tabBarInactiveTintColor: C.muted, tabBarStyle: { backgroundColor: 'white', borderTopColor: C.line, height: Platform.OS === 'web' ? 76 : undefined, paddingTop: 10, paddingBottom: Platform.OS === 'web' ? 14 : undefined }, tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 4 }, tabBarIcon: ({ color, size }) => <Icon name={icons[route.name]} color={color} size={size}/> }), screens: { Home: HomeScreen, Activity: ActivityScreen, Classes: ClassesScreen, Community: CommunityScreen, Profile: ProfileScreen } });
+const Tabs = createBottomTabNavigator({ initialRouteName: 'Home', screenOptions: ({ route }) => ({ headerShown: false, tabBarActiveTintColor: C.blue, tabBarInactiveTintColor: C.muted, tabBarStyle: { backgroundColor: 'white', borderTopColor: C.line, height: Platform.OS === 'web' ? 80 : undefined, paddingTop: 8, paddingBottom: Platform.OS === 'web' ? 8 : undefined }, tabBarItemStyle: { paddingVertical: 0 }, tabBarLabelStyle: { fontSize: 10, lineHeight: 14, flexShrink: 0, fontWeight: '600', marginTop: 3 }, tabBarIcon: ({ color, size, focused }) => route.name === 'Home' ? <View style={{ width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? C.navy : C.pale }}><RecEmblem kind="building" size={24} color={focused ? 'white' : C.muted}/></View> : <Icon name={icons[route.name]} color={color} size={size}/> }), screens: { Activity: ActivityScreen, Classes: ClassesScreen, Home: HomeScreen, Community: CommunityScreen, Profile: ProfileScreen } });
 const Navigation = createStaticNavigation(Tabs);
-export default function App() { return <ProfileProvider><SocialProvider><RecApp/></SocialProvider></ProfileProvider>; }
+export default function App() { return <ProfileProvider><SocialProvider><WorkoutFeedProvider><RecApp/></WorkoutFeedProvider></SocialProvider></ProfileProvider>; }
 function RecApp() {
   const { data, update: setData, ready, error: storageError } = useLocalData('uconn-rec-v1', initial, isAppData); const [toast, setToast] = useState('');
   const { profile, loaded, editing } = useProfile();
   const { ready: socialReady } = useSocial();
+  const { ready: feedReady } = useWorkoutFeed();
   const { width, height } = useWindowDimensions(); const desktop = Platform.OS === 'web' && width >= 900;
   const welcome = !profile || editing; const dark = !loaded || welcome;
-  const previewWidth = Math.min(410, width, Math.max(300, height - (desktop ? 52 : 0)) * 9 / 16);
   useEffect(() => { if (toast) { const timer = setTimeout(() => setToast(''), 4000); return () => clearTimeout(timer); } }, [toast]);
   return <Store.Provider value={{ data, setData, notify: setToast }}><SafeAreaProvider><StatusBar style={dark ? 'light' : 'dark'}/>
     <View style={[s.app, desktop && s.desktop, dark && { backgroundColor: '#191E24' }]}>
       {desktop && <View style={s.desktopIntro}>
-        <Text style={[s.desktopWordmark, dark && { color: '#DEE5EC' }]}>UCONN REC</Text>
+        <View style={{ marginBottom: 42 }}><RecBrand dark={dark}/></View>
         <Text style={[s.desktopTitle, dark && { color: '#E1E6EB', fontSize: 43, lineHeight: 48, letterSpacing: -1.5 }]}>{dark ? 'Your campus.\nYour people.\nYour beginning.' : 'Work out.\nMeet up.\nBelong here.'}</Text>
         <Text style={[s.desktopCopy, dark && { color: '#AEB8C3' }]}>{dark ? 'A calmer first step into your Rec community. A few questions to make this space feel like yours.' : 'A community-first campus fitness concept. Explore the screens, try a workout, and find your next class.'}</Text>
         <View style={[s.desktopRule, dark && { backgroundColor: '#9AAABC' }]}/>
         <Text style={[s.desktopLabel, dark && { color: '#D8E0E8' }]}>Interactive mobile preview</Text>
         <Text style={[s.desktopSmall, dark && { color: '#AEB8C3' }]}>The same React Native screens, ready for Expo Go on your phone.</Text>
-        <Text style={[s.desktopSmall, { marginTop: 32 }, dark && { color: '#AEB8C3' }]}>Prototype 04 · Community in motion</Text>
+        <Text style={[s.desktopSmall, { marginTop: 32 }, dark && { color: '#AEB8C3' }]}>Prototype 05 · Make the Rec yours</Text>
       </View>}
       <View style={[s.phone, Platform.OS !== 'web' && { flex: 1 },
-        Platform.OS === 'web' && { width: welcome ? previewWidth : '100%', maxWidth: 430, height: welcome ? previewWidth * 16 / 9 : Math.min(860, height), flex: undefined, alignSelf: 'center' },
-        desktop && { width: welcome ? previewWidth : 410, height: welcome ? previewWidth * 16 / 9 : Math.min(884, height - 52), borderRadius: 32, borderWidth: 7, borderColor: '#343E48', boxShadow: '0px 24px 70px rgba(0,0,0,0.25)', flex: undefined },
+        Platform.OS === 'web' && { width: '100%', maxWidth: 430, height, flex: undefined, alignSelf: 'center' },
+        desktop && { width: 410, height: Math.min(884, height - 52), borderRadius: 32, borderWidth: 7, borderColor: '#343E48', boxShadow: '0px 24px 70px rgba(0,0,0,0.25)', flex: undefined },
         dark && { backgroundColor: '#101419' },
       ]}>
         {desktop && !dark && <View style={s.phoneStatus}><Text style={s.statusTime}>9:41</Text><View style={s.row}><Icon name="cellular" size={14}/><Icon name="wifi" size={14}/><Icon name="battery-full" size={19}/></View></View>}
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          {!ready || !loaded || !socialReady ? <WelcomeLoading/> : welcome ? <Onboarding/> : <Navigation/>}
+          {!ready || !loaded || !socialReady || !feedReady ? <WelcomeLoading/> : welcome ? <Onboarding/> : <Navigation/>}
         </KeyboardAvoidingView>
         {!!storageError && <View accessibilityRole="alert" style={{ padding: 12, backgroundColor: '#FFF1D6' }}><Text style={s.small}>{storageError}</Text></View>}
         {!!toast && <View accessibilityRole="alert" style={s.toast}><Icon name="checkmark-circle" color="white" size={20}/><Text style={s.toastText}>{toast}</Text></View>}

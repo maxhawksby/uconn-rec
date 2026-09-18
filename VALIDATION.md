@@ -1,5 +1,37 @@
 # Validation — desktop MVP review build
 
+## Home workout feed pass — September 17, 2026
+
+- TypeScript passes; 29 check groups pass (7 onboarding and 22 social/feed/Rec-space checks).
+- Web production and native iOS/Hermes exports pass. Native export is not a physical iPhone test.
+- Confirmed Activity, Classes, Home, Community, Profile order, Home selected after reload, and visible labels at 390×844 and 320×568.
+- Browser-tested like toggle, comment creation, connected workout message draft, deliberate local Send, and inbox preview. A reload preserved the liked state, comment count, and notification read state.
+- Marked notifications read. Notifications only use public workouts from current connections, with sample updates labeled.
+- Saved a test Bench press privately, selected Public workout feed, entered a separate caption, and verified the resulting card's summary/metrics. Private notes are excluded by explicit projection, also covered by automated tests. Unshare removed the card from Friends and Campus.
+- Tested the Campus-to-message connection gate and Connect & write action. A draft opened for the correct person without sending it automatically.
+- Reviewed Home, comments, connect dialog, and conversation at mobile widths. At 320px, document width equals viewport width; conversation controls remain reachable while content scrolls.
+- Fresh browser reload reported no console errors. All five onboarding source files retained their pre-change SHA-256 hashes.
+- Prototype actions and fixture data are local only. No real student received a message or comment. Browser checks added a private test workout and local sample social interactions.
+
+The earlier validation records below describe previous development passes.
+
+## Visual onboarding pass — September 17, 2026
+
+Validated the local `codex/rec-onboarding-visuals` implementation on localhost:8082:
+
+- TypeScript passes; 20 model check groups pass, including the new Rec-space mapping and off-site-interest exclusions.
+- Web production export and iOS/Hermes export pass with `react-native-svg` installed through Expo's SDK 57 dependency resolver.
+- Replayed every onboarding question through the new summary and saved back into Home.
+- Selected Running, went back to year, returned to interests, and verified the choice persisted; restored the original interests before saving.
+- Checked browser `aria-checked` state and progress values; fixed the React Native Web state-prop compatibility gap.
+- Checked layouts at desktop, 390×844, and 320×568. The narrow document has no horizontal overflow; the fixed primary action stays visible.
+- Selected Aquatics and Studios on Home; the illustration and description changed, and the Studios action opened Classes.
+- Corrected bottom-tab label clipping and SVG DOM-prop warnings. A fresh reload reports no browser console errors.
+- Reduced-motion code paths use immediate updates; OS-level reduced motion and VoiceOver still need physical-device review. Native compilation is not a physical iPhone test.
+- The Higgsfield image in `design/rec-maquette-concept.png` is a future-model reference only. No mesh, surveyed layout, or live wayfinding is claimed.
+
+The earlier acceptance record below describes the original MVP, not additional tests repeated in this visual pass.
+
 Checked September 17, 2026. This completes the local design/MVP development pass and is ready for a joint Expo walkthrough.
 
 ## Automated

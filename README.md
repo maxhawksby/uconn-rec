@@ -29,17 +29,21 @@ The launcher generates a new Expo QR for the current LAN address.
 2. Enter a sample UConn email, choose a preferred first name and class year.
 3. Search the 101 interest options from published UConn Rec offerings, grouped into six sections. Named classes also match their broader activity family.
 4. Preview optional sample-contact matching and connect with demo students. Both are optional.
-5. Join a suggested group, such as **New students - Weightlifting**, then enter Home.
+5. Join a suggested group, such as **New students - Weightlifting**, review your personal Rec summary, then enter Home. The architectural vignette highlights spaces related to your interests as you answer.
+   Home now opens with Log a workout, Find a class, Meet your pack, and a public workout feed. The six illustrated Rec spaces are in Profile.
 6. In **Activity**, enter sets or a duration and save privately. Individual sets are retained for new workouts.
-7. Use the share icon in workout history to select a group or connected friend. Confirm the summary; private notes are excluded.
+7. Use the share icon in workout history to choose the public Home feed or a group/connected friend. Add a separate public caption if desired; private notes are excluded. Unshare your own Home card to make it private again.
 8. In **Community**, explore Feed, Friends, and Chats. Send local messages, share a saved workout, leave a group, or remove a connection through conversation details.
 9. Browse sample classes and reserve/cancel a local demo spot. Update interests directly from Profile.
+10. On Home, switch between Friends and Campus. Friends only shows public activities from your connections, plus your public shares. Campus lets you connect with sample members. Like a workout, add/delete your own comment, or open an editable encouragement draft. Top-right icons open notifications and your inbox. Updates can be marked read; messages require a connection and a deliberate Send.
+
+Navigation order: **Activity · Classes · Home · Community · Profile**. Home is the initial screen after onboarding.
 
 ## Scope
 
 The activity catalog is a curated snapshot of UConn Recreation public pages, reviewed September 17, 2026. Seasonal availability is not live. Identity, students, messages, posts, class times, reservations, and occupancy are demo data. No university sign-in, real contact access, network messaging, or actual registrations are connected.
 
-Workouts, profiles, posts, reservations, friends, and chats persist locally. They do not sync between browser and phone. The provided Rec photo is used on welcome and Home; the other fitness images are illustrative.
+Workouts, profiles, posts, reservations, friends, chats, feed reactions, comments, public summaries, and notification read state persist locally. They do not sync between browser and phone. Public visibility is simulated on this device; no Strava data or actual student workouts are imported. The provided Rec photo is used on welcome; the other fitness images are illustrative.
 
 ## Check
 
@@ -51,7 +55,11 @@ Workouts, profiles, posts, reservations, friends, and chats persist locally. The
 ## Code and notes
 
 - `src/Main.tsx`: navigation, Home, Activity, Classes, Community, Profile.
+- `src/HomeFeed.tsx`, `src/workoutFeedModel.ts`, `src/workoutFeed.tsx`: public workout cards, Friends/Campus filtering, comments, notifications, inbox, and validated local persistence.
+- `HOME-FEED-DESIGN.md`: Strava reference extraction, adaptation choices, and Home visual review.
 - `src/onboarding/`: profile, campus catalog, welcome and interest picker.
+- `src/RecVisual.tsx`, `src/RecDiscovery.tsx`, `src/recSpaces.ts`: original architectural/activity emblems, interactive Rec vignette, and interest-to-space mapping.
+- `VISUAL-DIRECTION.md`: visual review, motion choices, Higgsfield concept, and future 3D path.
 - `src/socialModel.ts`: fictional students, activity families, matching, message validation.
 - `src/social.tsx`: local community state and suggestion cards.
 - `src/Conversation.tsx`: keyboard-aware conversations and explicit workout sharing.
