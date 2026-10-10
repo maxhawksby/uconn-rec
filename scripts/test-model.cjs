@@ -11,6 +11,7 @@ function load(file) {
 }
 const S = load('src/data/selectors.ts'); const A = load('src/data/actions.ts'); const D = load('src/data/demo.ts');
 const schools = load('src/data/schools.ts'); const acts = load('src/data/activities.ts');
+const M = load('src/meetups/logic.ts');
 let count = 0; function check(name, fn) { fn(); count++; console.log('PASS', name); }
 
 const NOW = new Date(2026, 9, 9, 18, 0); // Fri Oct 9 2026, 6pm local
@@ -178,5 +179,49 @@ check('Code helpers and pre-account suggestions', () => {
   assert.equal(sug.length, 4);
   assert(sug[0].shared.includes('basketball'));
   assert.equal(O.suggestionsForNewStudent(s, 'yale', ['basketball']).length, 0);
+});
+check('Meetup day grouping: today, tomorrow, this week, later, soonest first', () => {
+  const at = (days, hour, id) => ({ id, startsAt: new Date(2026, 9, 9 + days, hour).toISOString(), capacity: 4, attendeeIds: ['a'] });
+  const sections = M.groupMeetupsByDay([at(1, 8, 'tom'), at(0, 20, 'tonight'), at(6, 9, 'thu'), at(7, 9, 'nextfri'), at(0, 17, 'live'), at(2, 23, 'sun')], NOW);
+  assert.deepEqual([...sections.map(s => s.key)], ['today', 'tomorrow', 'week', 'later']);
+  assert.deepEqual([...sections.map(s => [...s.data.map(m => m.id)])], [['live', 'tonight'], ['tom'], ['sun', 'thu'], ['nextfri']]);
+  assert.equal(M.dayBucket(new Date(2026, 9, 9, 23, 59).toISOString(), NOW), 'today');
+  assert.equal(M.dayBucket(new Date(2026, 9, 10, 0, 1).toISOString(), NOW), 'tomorrow');
+  assert.equal(M.dayBucket(new Date(2026, 9, 31, 12).toISOString(), new Date(2026, 9, 30, 23)), 'tomorrow'); // month edge
+  assert.equal(M.groupMeetupsByDay([], NOW).length, 0);
+});
+check('Meetup spots left: "Need N more", full, never negative', () => {
+  assert.equal(M.spotsInfo({ capacity: 10, attendeeIds: ['a', 'b', 'c', 'd', 'e', 'f'] }).label, 'Need 4 more');
+  assert.equal(M.spotsInfo({ capacity: 2, attendeeIds: ['a'] }).label, 'Need 1 more');
+  const full = M.spotsInfo({ capacity: 2, attendeeIds: ['a', 'b', 'c'] });
+  assert.equal(full.left, 0); assert.equal(full.full, true); assert.equal(full.label, 'Full');
+});
+check('Meetup status, role and filters', () => {
+  const m = { id: 'm', hostId: 'h', activityId: 'basketball', startsAt: new Date(2026, 9, 9, 19).toISOString(), capacity: 3, attendeeIds: ['h', 'me'] };
+  assert.equal(M.meetupStatus(m, NOW), 'upcoming');
+  assert.equal(M.meetupStatus(m, new Date(2026, 9, 9, 20)), 'live');
+  assert.equal(M.meetupStatus(m, new Date(2026, 9, 9, 21, 1)), 'ended');
+  assert.equal(M.meetupRole(m, 'h', NOW), 'host'); assert.equal(M.meetupRole(m, 'me', NOW), 'going');
+  assert.equal(M.meetupRole(m, 'x', NOW), 'open'); assert.equal(M.meetupRole({ ...m, capacity: 2 }, 'x', NOW), 'full');
+  assert.equal(M.meetupRole(m, 'me', new Date(2026, 9, 10)), 'ended');
+  const run = { ...m, id: 'r', activityId: 'running', attendeeIds: ['h'] };
+  assert.deepEqual([...M.filterMeetups([m, run], 'pickup', 'me').map(x => x.id)], ['m']);
+  assert.deepEqual([...M.filterMeetups([m, run], 'going', 'me').map(x => x.id)], ['m']);
+  assert.equal(M.filterMeetups([m, run], 'all', 'me').length, 2);
+});
+check('Meetup picker: titles, times, slots and validation', () => {
+  assert.equal(M.suggestTitle('basketball', new Date(2026, 9, 9, 19)), 'Evening pickup basketball');
+  assert.equal(M.suggestTitle('running', new Date(2026, 9, 9, 7)), 'Morning run');
+  assert.equal(M.suggestTitle('spin', new Date(2026, 9, 9, 13)), 'Afternoon spin session');
+  assert.equal(M.formatTime(new Date(2026, 9, 9, 0, 5)), '12:05 AM'); assert.equal(M.formatTime(new Date(2026, 9, 9, 19, 30)), '7:30 PM');
+  assert.equal(M.timeSlots(new Date(2026, 9, 9), NOW)[0], 18 * 60 + 30); // 6pm now: 15 min lead
+  assert.equal(M.timeSlots(new Date(2026, 9, 10), NOW).length, 36);
+  assert.deepEqual({ ...M.defaultStart(NOW) }, { offset: 0, minutes: 19 * 60 });
+  assert.deepEqual({ ...M.defaultStart(new Date(2026, 9, 9, 23, 10)) }, { offset: 1, minutes: 18 * 60 });
+  assert.deepEqual([...M.dayOptions(NOW).map(d => d.label).slice(0, 3)], ['Today', 'Tomorrow', 'Sun']);
+  const ok = { activityId: 'basketball', title: 'Hoops', location: 'Court 1', startsAt: new Date(2026, 9, 9, 19), capacity: 10 };
+  assert.deepEqual({ ...M.validateMeetupForm(ok, NOW) }, {});
+  const bad = M.validateMeetupForm({ activityId: null, title: ' ', location: '', startsAt: new Date(2026, 9, 9, 17), capacity: 1 }, NOW);
+  assert.deepEqual(Object.keys(bad).sort(), ['activity', 'capacity', 'location', 'title', 'when']);
 });
 console.log(`${count} model checks passed.`);
