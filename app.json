@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "UConn Rec",
-    "slug": "uconn-rec",
+    "name": "Dean's Lift",
+    "slug": "deans-lift",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,6 +20,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
