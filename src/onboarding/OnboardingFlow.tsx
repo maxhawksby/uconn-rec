@@ -1,115 +1,145 @@
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BackHandler, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useStore } from '../data/store';
-import { searchSchools, signupGate, waitlistStatus } from '../data/selectors';
-import { SCHOOL_BY_ID } from '../data/schools';
-import { ACTIVITIES } from '../data/activities';
-import { CLASS_YEARS, ClassYear, School } from '../data/types';
-import { Button, Chip, Input, Screen, Text, attempt } from '../ui';
-import { colors, space } from '../theme';
+import { groupsForSchool, waitlistStatus } from '../data/selectors';
+import type { ClassYear, School } from '../data/types';
+import { attempt } from '../ui';
+import { colors } from '../theme';
+import { suggestionsForNewStudent } from './logic';
+import { Welcome } from './Welcome';
+import { SchoolStep } from './SchoolStep';
+import { CodeStep, EmailStep } from './VerifySteps';
+import { InterestsStep, PeopleStep, ProfileStep } from './ProfileSteps';
+import { Waitlist } from './Waitlist';
 
-// PLACEHOLDER - functional but plain. Owned by the Onboarding feature agent, which will
-// replace this with the designed flow (welcome, school search, .edu code, profile, interests, friends).
+// School-first sign-up. Pilot path: school -> email -> code -> profile -> interests -> people,
+// then completeProfile signs the student in and the root navigator swaps to the Feed.
+// Any other school: school -> email -> waitlist, which is where the flow ends.
 
-type Step = 'school' | 'email' | 'code' | 'profile' | 'waitlist';
+type Step = 'welcome' | 'school' | 'email' | 'code' | 'profile' | 'interests' | 'people' | 'waitlist';
+
+const PILOT_STEPS: Step[] = ['school', 'email', 'code', 'profile', 'interests', 'people'];
+const WAITLIST_STEPS: Step[] = ['school', 'email'];
+
+const BACK: Partial<Record<Step, Step>> = {
+  school: 'welcome', email: 'school', code: 'email', profile: 'code', interests: 'profile', people: 'interests', waitlist: 'school',
+};
 
 export function OnboardingFlow() {
   const { state, actions } = useStore();
-  const [step, setStep] = useState<Step>('school');
+  const [step, setStep] = useState<Step>('welcome');
   const [query, setQuery] = useState('');
   const [school, setSchool] = useState<School | null>(null);
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [demoCode, setDemoCode] = useState('');
+  const [verified, setVerified] = useState(false);
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
-  const [year, setYear] = useState<ClassYear>('First year');
+  const [year, setYear] = useState<ClassYear | null>(null);
   const [interests, setInterests] = useState<string[]>([]);
+  const [following, setFollowing] = useState<string[]>([]);
+  const [joined, setJoined] = useState<string[]>([]);
+
+  const path = school && !school.isPilot ? WAITLIST_STEPS : PILOT_STEPS;
+  const progress = { index: Math.max(1, path.indexOf(step) + 1), total: path.length };
+
+  const go = (next: Step) => { Keyboard.dismiss(); setStep(next); };
+  const back = () => { const prev = BACK[step]; if (prev) go(prev); };
+
+  // Android hardware back walks the flow instead of closing the app.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const prev = BACK[step];
+      if (!prev) return false;
+      go(prev);
+      return true;
+    });
+    return () => sub.remove();
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function pickSchool(s: School) {
+    if (s.id !== school?.id) { setVerified(false); setDemoCode(''); }
+    setSchool(s);
+    go('email');
+  }
+
+  function sendCode() {
+    if (!school) return;
+    const r = attempt(() => actions.startSignup({ email, schoolId: school.id }), "Couldn't send a code");
+    if (r.ok) { setDemoCode(r.value.code); setVerified(false); go('code'); }
+  }
 
   function submitEmail() {
     if (!school) return;
-    const gate = signupGate(email, school.id);
-    if (!gate.ok && gate.reason === 'waitlist') {
-      if (attempt(() => actions.joinWaitlist({ email, schoolId: school.id })).ok) setStep('waitlist');
-      return;
-    }
-    const r = attempt(() => actions.startSignup({ email, schoolId: school.id }));
-    if (r.ok) { setDemoCode(r.value.code); setStep('code'); }
+    if (school.isPilot) return sendCode();
+    if (attempt(() => actions.joinWaitlist({ email, schoolId: school.id }), "Couldn't join the waitlist").ok) go('waitlist');
   }
 
-  const body = (() => {
+  function verify(code: string) {
+    // The demo code is on screen, so a mismatch is shown inline instead of as an alert.
+    if (code !== demoCode) return false;
+    if (attempt(() => actions.verifyCode(code), "Couldn't verify").ok) { setVerified(true); go('profile'); }
+    return true;
+  }
+
+  function finish() {
+    if (!year) return;
+    const r = attempt(() => actions.completeProfile({ firstName: first, lastName: last, classYear: year, interests }), "Couldn't create your account");
+    if (!r.ok) return;
+    // completeProfile signs in synchronously, so these run as the new student. The navigator
+    // then swaps onboarding for the tabs, landing on the Feed.
+    following.forEach(id => attempt(() => actions.follow(id)));
+    joined.forEach(id => attempt(() => actions.joinGroup(id)));
+  }
+
+  const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
+
+  const people = useMemo(
+    () => (school && step === 'people' ? suggestionsForNewStudent(state, school.id, interests, 6) : []),
+    [state, school, interests, step],
+  );
+  const groups = useMemo(() => (school && step === 'people' ? groupsForSchool(state, school.id).slice(0, 4) : []), [state, school, step]);
+
+  const screen = (() => {
     switch (step) {
+      case 'welcome':
+        return <Welcome onStart={() => go('school')} />;
       case 'school':
-        return (
-          <>
-            <Text variant="hero">Find your campus</Text>
-            <Input placeholder="Search schools" value={query} onChangeText={setQuery} autoCorrect={false} />
-            {searchSchools(query, undefined, 8).map(s => (
-              <Pressable key={s.id} style={styles.row} onPress={() => { setSchool(s); setStep('email'); }} accessibilityRole="button">
-                <Text variant="bodyStrong">{s.name}</Text>
-                <Text variant="tiny" color={s.isPilot ? 'turf' : 'muted'}>{s.isPilot ? 'Open now' : 'Waitlist'} · {s.city}, {s.state}</Text>
-              </Pressable>
-            ))}
-          </>
-        );
+        return <SchoolStep query={query} onQuery={setQuery} selected={school} progress={progress} onBack={back} onPick={pickSchool} onNext={() => school && go('email')} />;
       case 'email':
-        return (
-          <>
-            <Text variant="hero">{school?.shortName} email</Text>
-            <Input placeholder={`you@${school?.emailDomains[0]}`} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
-            <Button label="Continue" onPress={submitEmail} />
-            <Button label="Pick a different school" variant="ghost" onPress={() => setStep('school')} />
-          </>
-        );
+        return school ? (
+          <EmailStep school={school} email={email} onEmail={setEmail} progress={progress} onBack={back} onSubmit={submitEmail}
+            onSwitchSchool={s => { setSchool(s); setVerified(false); }} />
+        ) : null;
       case 'code':
-        return (
-          <>
-            <Text variant="hero">Check your email</Text>
-            <Text variant="small" color="muted">Demo build: your code is {demoCode}</Text>
-            <Input placeholder="6-digit code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} />
-            <Button label="Verify" onPress={() => { if (attempt(() => actions.verifyCode(code)).ok) setStep('profile'); }} />
-          </>
-        );
+        return <CodeStep email={email.trim().toLowerCase()} demoCode={demoCode} verified={verified} progress={progress}
+          onBack={back} onResend={sendCode} onVerify={verify} onNext={() => go('profile')} />;
       case 'profile':
-        return (
-          <>
-            <Text variant="hero">About you</Text>
-            <Input label="First name" value={first} onChangeText={setFirst} />
-            <Input label="Last name" value={last} onChangeText={setLast} />
-            <View style={styles.wrap}>{CLASS_YEARS.map(y => <Chip key={y} label={y} selected={year === y} onPress={() => setYear(y)} />)}</View>
-            <Text variant="eyebrow" color="muted">What do you do?</Text>
-            <View style={styles.wrap}>
-              {ACTIVITIES.slice(0, 20).map(a => (
-                <Chip key={a.id} label={a.name} selected={interests.includes(a.id)}
-                  onPress={() => setInterests(cur => (cur.includes(a.id) ? cur.filter(x => x !== a.id) : [...cur, a.id]))} />
-              ))}
-            </View>
-            <Button label="Enter Dean's Lift" onPress={() => attempt(() => actions.completeProfile({ firstName: first, lastName: last, classYear: year, interests }))} />
-          </>
-        );
-      case 'waitlist': {
-        const w = school ? waitlistStatus(state, school.id, email) : null;
-        return (
-          <>
-            <Text variant="hero">You're on the list</Text>
-            <Text variant="body" color="muted">{school ? SCHOOL_BY_ID[school.id]?.shortName : ''} unlocks at {w?.unlockAt} students. {w?.count} have joined. You're #{w?.position}.</Text>
-            <Button label="Back" variant="ghost" onPress={() => setStep('school')} />
-          </>
-        );
-      }
+        return school ? (
+          <ProfileStep school={school} first={first} last={last} year={year} progress={progress} onBack={back} onNext={() => go('interests')}
+            onChange={p => { if (p.first !== undefined) setFirst(p.first); if (p.last !== undefined) setLast(p.last); if (p.year) setYear(p.year); }} />
+        ) : null;
+      case 'interests':
+        return <InterestsStep picked={interests} onToggle={id => setInterests(cur => toggle(cur, id))} progress={progress} onBack={back} onNext={() => go('people')} />;
+      case 'people':
+        return school ? (
+          <PeopleStep school={school} people={people} groups={groups} following={following} joined={joined}
+            onToggleFollow={id => setFollowing(cur => toggle(cur, id))} onToggleJoin={id => setJoined(cur => toggle(cur, id))}
+            progress={progress} onBack={back} onFinish={finish} />
+        ) : null;
+      case 'waitlist':
+        return school ? (
+          <Waitlist school={school} email={email.trim().toLowerCase()} status={waitlistStatus(state, school.id, email)}
+            onStartOver={() => { setSchool(null); setEmail(''); setQuery(''); go('school'); }} />
+        ) : null;
     }
   })();
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen edges={['top', 'bottom']} contentStyle={styles.content}>{body}</Screen>
+      <React.Fragment key={step}>{screen}</React.Fragment>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
-  content: { gap: space.lg, paddingTop: space.x4 },
-  row: { paddingVertical: space.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line, gap: space.xxs },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+const styles = StyleSheet.create({ flex: { flex: 1, backgroundColor: colors.bg } });
