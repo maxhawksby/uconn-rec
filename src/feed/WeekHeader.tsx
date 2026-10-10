@@ -3,8 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import type { ProfileStats } from '../data/types';
 import { Button, Card, Scoreboard, Text } from '../ui';
 import { space } from '../theme';
-import { formatDistance } from '../data/selectors';
-import { compactNumber, durationParts } from './model';
+import { compactNumber, durationParts, formatDistance } from '../data/selectors';
 
 type Props = { stats: ProfileStats; onRecord: () => void };
 

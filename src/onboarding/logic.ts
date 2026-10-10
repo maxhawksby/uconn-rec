@@ -121,17 +121,3 @@ export function cleanCode(text: string) {
 export function formatCode(code: string) {
   return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
 }
-
-// ---------- Suggestions before the account exists ----------
-
-/**
- * Same-campus students ranked by shared interests, for the pre-account "people to follow" step.
- * suggestedStudents() in selectors needs a signed-in viewer, which doesn't exist yet here.
- */
-export function suggestionsForNewStudent(state: AppState, schoolId: ID, interests: ID[], limit = 6): { student: Student; shared: ID[] }[] {
-  return state.students
-    .filter(s => s.schoolId === schoolId)
-    .map(s => ({ student: s, shared: s.interests.filter(i => interests.includes(i)) }))
-    .sort((a, b) => b.shared.length - a.shared.length || a.student.firstName.localeCompare(b.student.firstName))
-    .slice(0, limit);
-}

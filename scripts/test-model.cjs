@@ -175,10 +175,10 @@ check('Code helpers and pre-account suggestions', () => {
   assert.equal(O.cleanCode('48 29-13x9'), '482913');
   assert.equal(O.formatCode('482913'), '482 913');
   const s = D.makeDemoState(NOW);
-  const sug = O.suggestionsForNewStudent(s, 'uconn', ['basketball'], 4);
+  const sug = S.suggestedStudentsFor(s, 'uconn', ['basketball'], 4);
   assert.equal(sug.length, 4);
   assert(sug[0].shared.includes('basketball'));
-  assert.equal(O.suggestionsForNewStudent(s, 'yale', ['basketball']).length, 0);
+  assert.equal(S.suggestedStudentsFor(s, 'yale', ['basketball']).length, 0);
 });
 check('Meetup day grouping: today, tomorrow, this week, later, soonest first', () => {
   const at = (days, hour, id) => ({ id, startsAt: new Date(2026, 9, 9 + days, hour).toISOString(), capacity: 4, attendeeIds: ['a'] });

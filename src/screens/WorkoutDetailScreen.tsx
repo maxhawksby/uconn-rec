@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { RootScreenProps } from '../navigation/types';
 import type { Comment, Student, Workout } from '../data/types';
 import { useMe, useStore } from '../data/store';
-import { relativeTime, studentById, workoutById } from '../data/selectors';
+import { kudosGivers, relativeTime, studentById, workoutById } from '../data/selectors';
 import { Avatar, Button, EmptyState, Icon, Scoreboard, Text, attempt } from '../ui';
 import { colors, gutter, hitSlop, minTouch, radius, space, type } from '../theme';
 import { AuthorRow, WorkoutBody, activityIcon, activityLabel } from '../feed/WorkoutCard';
@@ -14,7 +14,7 @@ import { RouteSketch } from '../feed/RouteSketch';
 import { KudosButton } from '../feed/KudosButton';
 import { useKeyboardVisible } from '../feed/useKeyboardVisible';
 import { workoutStats } from '../feed/stats';
-import { VISIBILITY_LABEL, fullDate, fullName, kindLabel, kudosGivers, plural } from '../feed/model';
+import { VISIBILITY_LABEL, fullDate, fullName, kindLabel, plural } from '../feed/model';
 
 const COMMENT_MAX = 500;
 

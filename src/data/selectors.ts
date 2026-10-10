@@ -77,9 +77,17 @@ export function suggestedStudents(state: AppState, viewerId: ID, limit = 10) {
   const viewer = studentById(state, viewerId);
   if (!viewer) return [];
   const following = new Set(followingIds(state, viewerId));
-  return state.students
-    .filter(s => s.id !== viewerId && s.schoolId === viewer.schoolId && !following.has(s.id))
-    .map(s => ({ student: s, shared: s.interests.filter(i => viewer.interests.includes(i)) }))
+  return rankByInterests(state.students.filter(s => s.id !== viewerId && s.schoolId === viewer.schoolId && !following.has(s.id)), viewer.interests, limit);
+}
+
+/** Same-campus students ranked by shared interests, for sign-up before the account exists. */
+export function suggestedStudentsFor(state: AppState, schoolId: ID, interests: ID[], limit = 6) {
+  return rankByInterests(state.students.filter(s => s.schoolId === schoolId), interests, limit);
+}
+
+function rankByInterests(students: Student[], interests: ID[], limit: number) {
+  return students
+    .map(s => ({ student: s, shared: s.interests.filter(i => interests.includes(i)) }))
     .sort((a, b) => b.shared.length - a.shared.length || a.student.firstName.localeCompare(b.student.firstName))
     .slice(0, limit);
 }
@@ -145,6 +153,15 @@ export function workoutById(state: AppState, id: ID, viewerId: ID): FeedItem | n
 }
 
 // ---------- Workout math ----------
+
+/** Students who gave kudos to a workout, newest first. */
+export function kudosGivers(state: AppState, workoutId: ID): Student[] {
+  return state.kudos
+    .filter(k => k.workoutId === workoutId)
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .map(k => studentById(state, k.studentId))
+    .filter((s): s is Student => !!s);
+}
 
 export function liftVolume(w: Workout) {
   return w.kind === 'lift' ? w.exercises.reduce((sum, e) => sum + e.sets.reduce((s, set) => s + set.reps * set.weight, 0), 0) : 0;
@@ -220,6 +237,12 @@ export function upcomingMeetups(state: AppState, schoolId: ID, now: Date = new D
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
+/** A group's upcoming meetups, soonest first. */
+export function meetupsForGroup(state: AppState, groupId: ID, now: Date = new Date()): Meetup[] {
+  const group = groupById(state, groupId);
+  return group ? upcomingMeetups(state, group.schoolId, now).filter(m => m.groupId === groupId) : [];
+}
+
 export function spotsLeft(m: Meetup) {
   return Math.max(0, m.capacity - m.attendeeIds.length);
 }
@@ -258,10 +281,49 @@ export function formatDistance(km: number) {
   return `${(km / KM_PER_MILE).toFixed(km / KM_PER_MILE >= 10 ? 1 : 2)} mi`;
 }
 
-export function formatPace(secPerKm: number | null) {
-  if (!secPerKm) return '-';
+/** Seconds per km as a per-mile clock ("8:42"), or null when there's no pace. */
+function mileClock(secPerKm: number | null) {
+  if (!secPerKm || !isFinite(secPerKm)) return null;
   const perMile = Math.round(secPerKm * KM_PER_MILE);
-  return `${Math.floor(perMile / 60)}:${String(perMile % 60).padStart(2, '0')}/mi`;
+  return `${Math.floor(perMile / 60)}:${String(perMile % 60).padStart(2, '0')}`;
+}
+
+export function formatPace(secPerKm: number | null) {
+  const clock = mileClock(secPerKm);
+  return clock ? `${clock}/mi` : '-';
+}
+
+// Scoreboard cells show a value and a unit separately.
+
+/** Miles as a bare number string ("3.12", "24.8"). */
+export function miles(km: number) {
+  const mi = km / KM_PER_MILE;
+  return mi === 0 ? '0' : mi.toFixed(mi >= 10 ? 1 : 2);
+}
+
+/** Pace split into value + unit ("8:42", "/mi"). */
+export function paceParts(durationSec: number, km: number) {
+  const clock = km > 0 && durationSec > 0 ? mileClock(durationSec / km) : null;
+  return clock ? { value: clock, unit: '/mi' } : { value: '-', unit: '' };
+}
+
+export function mph(durationSec: number, km: number) {
+  if (!(km > 0) || !(durationSec > 0)) return '-';
+  return (km / KM_PER_MILE / (durationSec / 3600)).toFixed(1);
+}
+
+/** Duration split: "1:05" + "h" or "48" + "min". */
+export function durationParts(sec: number) {
+  const totalMin = Math.round(sec / 60);
+  const h = Math.floor(totalMin / 60), m = totalMin % 60;
+  return h ? { value: `${h}:${String(m).padStart(2, '0')}`, unit: 'h' } : { value: String(m), unit: 'min' };
+}
+
+/** 12,450 -> "12.5k"; small numbers stay exact. */
+export function compactNumber(n: number) {
+  if (n >= 100000) return `${Math.round(n / 1000)}k`;
+  if (n >= 10000) return `${Math.round(n / 100) / 10}k`;
+  return n.toLocaleString('en-US');
 }
 
 export function relativeTime(iso: string, now: Date = new Date()) {

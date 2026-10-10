@@ -9,6 +9,7 @@ import { Icon } from '../ui';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { FeedScreen } from '../screens/FeedScreen';
 import { RecordScreen } from '../screens/RecordScreen';
+import { useLiftInProgress } from '../record/session';
 import { MeetupsScreen } from '../screens/MeetupsScreen';
 import { GroupsScreen } from '../screens/GroupsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -28,11 +29,13 @@ const TAB_ICONS: Record<keyof TabParamList, string> = {
 
 /** The center Record tab: an orange square that sits above the bar. */
 function RecordButton({ onPress, accessibilityState }: BottomTabBarButtonProps) {
+  const live = useLiftInProgress();
   return (
     <View style={styles.recordSlot}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Record a workout" accessibilityState={accessibilityState}
+      <Pressable accessibilityRole="button" accessibilityLabel={live ? 'Resume your lift' : 'Record a workout'} accessibilityState={accessibilityState}
         onPress={onPress} style={({ pressed }) => [styles.recordButton, pressed && { backgroundColor: colors.accentPressed }]}>
         <Icon name="add" size={30} color="onAccent" />
+        {live ? <View style={styles.liveDot} /> : null}
       </Pressable>
     </View>
   );
@@ -92,5 +95,6 @@ const styles = StyleSheet.create({
   tabBar: { backgroundColor: colors.surface, borderTopColor: colors.line },
   tabLabel: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase' },
   recordSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  liveDot: { position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.ink, borderWidth: 2, borderColor: colors.surface },
   recordButton: { width: 54, height: 54, borderRadius: radius.lg, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: -space.lg },
 });

@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, TextInputProps, View } from 'react-native';
 import { colors, minTouch, radius, space, type } from '../theme';
 import { Text } from './Text';
 
-type Props = TextInputProps & { label?: string; error?: string };
+type Props = TextInputProps & { label?: string; error?: string; ref?: React.Ref<TextInput> };
 
 export function Input({ label, error, style, ...rest }: Props) {
   return (

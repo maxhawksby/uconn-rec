@@ -1,7 +1,7 @@
 import type { AppState, Group, ID, ProfileStats, Student, Workout } from '../data/types';
 import { ACTIVITY_BY_ID, activityName } from '../data/activities';
 import {
-  KM_PER_MILE, formatDistance, liftVolume, myGroups, personalRecords, profileStats, streakDays, weeklyTotals, workoutsFor,
+  durationParts, formatDistance, liftVolume, miles, myGroups, personalRecords, profileStats, streakDays, weeklyTotals, workoutsFor,
 } from '../data/selectors';
 import type { Stat } from '../ui';
 
@@ -19,17 +19,14 @@ export function statsFor(state: AppState, studentId: ID, viewerId: ID, now: Date
 
 /** The scoreboard as two rows: streak and sessions, then active time and distance this week. */
 export function scoreboardRows(stats: ProfileStats): [Stat[], Stat[]] {
-  const sec = stats.week.activeSec;
-  const time = sec < 3600 ? { value: String(Math.round(sec / 60)), unit: 'min' } : { value: (sec / 3600).toFixed(1), unit: 'hr' };
-  const miles = stats.week.distanceKm / KM_PER_MILE;
   return [
     [
       { label: 'Streak', value: String(stats.streakDays), unit: stats.streakDays === 1 ? 'day' : 'days' },
       { label: 'This week', value: String(stats.week.sessions), unit: stats.week.sessions === 1 ? 'session' : 'sessions' },
     ],
     [
-      { label: 'Active time', ...time },
-      { label: 'Distance', value: miles >= 100 || miles === 0 ? String(Math.round(miles)) : miles.toFixed(1), unit: 'mi' },
+      { label: 'Active time', ...durationParts(stats.week.activeSec) },
+      { label: 'Distance', value: miles(stats.week.distanceKm), unit: 'mi' },
     ],
   ];
 }

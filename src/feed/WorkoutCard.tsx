@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { AppState, FeedItem, Student, Workout } from '../data/types';
-import { relativeTime, studentById } from '../data/selectors';
+import { durationParts, relativeTime, studentById } from '../data/selectors';
 import { ACTIVITY_BY_ID, activityName } from '../data/activities';
 import { Avatar, Card, Icon, SchoolBadge, Scoreboard, Text } from '../ui';
 import { colors, hitSlop, minTouch, radius, space } from '../theme';
@@ -10,7 +10,7 @@ import { KudosButton } from './KudosButton';
 import { RouteSketch } from './RouteSketch';
 import { AvatarStack } from './AvatarStack';
 import { workoutStats } from './stats';
-import { VISIBILITY_LABEL, bestSet, durationParts, formatSet, fullName, plural } from './model';
+import { VISIBILITY_LABEL, bestSet, formatSet, fullName, plural } from './model';
 
 export function activityIcon(w: Workout) {
   switch (w.kind) {

@@ -1,17 +1,7 @@
-import type { AppState, ID, LiftExercise, LiftSet, RoutePoint, Student, Visibility, Workout } from '../data/types';
-import { KM_PER_MILE, studentById } from '../data/selectors';
+import type { LiftExercise, LiftSet, RoutePoint, Student, Visibility, Workout } from '../data/types';
 
 // Pure feed helpers that the shared selectors don't cover yet. Kept free of React so they
 // can move into src/data/selectors.ts once the contract owner accepts them.
-
-/** Students who gave kudos to a workout, newest first. Proposed for src/data/selectors.ts. */
-export function kudosGivers(state: AppState, workoutId: ID): Student[] {
-  return state.kudos
-    .filter(k => k.workoutId === workoutId)
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .map(k => studentById(state, k.studentId))
-    .filter((s): s is Student => !!s);
-}
 
 export function fullName(s: Pick<Student, 'firstName' | 'lastName'>) {
   return `${s.firstName} ${s.lastName}`;
@@ -45,40 +35,6 @@ export function formatSet(s: LiftSet) {
 
 export function exerciseVolume(e: LiftExercise) {
   return e.sets.reduce((sum, s) => sum + s.reps * s.weight, 0);
-}
-
-/** 12,450 -> "12.5k"; small numbers stay exact. */
-export function compactNumber(n: number) {
-  if (n >= 100000) return `${Math.round(n / 1000)}k`;
-  if (n >= 10000) return `${Math.round(n / 100) / 10}k`;
-  return n.toLocaleString('en-US');
-}
-
-// ---------- Distance ----------
-
-/** Miles as a bare number string for scoreboard cells ("3.12", "24.8"). */
-export function miles(km: number) {
-  const mi = km / KM_PER_MILE;
-  return mi.toFixed(mi >= 10 ? 1 : 2);
-}
-
-/** Pace split into value + unit for the scoreboard ("8:42", "/mi"). */
-export function paceParts(durationSec: number, km: number) {
-  if (!(km > 0) || !(durationSec > 0)) return { value: '-', unit: '' };
-  const perMile = Math.round((durationSec / km) * KM_PER_MILE);
-  return { value: `${Math.floor(perMile / 60)}:${String(perMile % 60).padStart(2, '0')}`, unit: '/mi' };
-}
-
-export function mph(durationSec: number, km: number) {
-  if (!(km > 0) || !(durationSec > 0)) return '-';
-  return (km / KM_PER_MILE / (durationSec / 3600)).toFixed(1);
-}
-
-/** Duration split for the scoreboard: "1:05" + "h" or "48" + "min". */
-export function durationParts(sec: number) {
-  const totalMin = Math.round(sec / 60);
-  const h = Math.floor(totalMin / 60), m = totalMin % 60;
-  return h ? { value: `${h}:${String(m).padStart(2, '0')}`, unit: 'h' } : { value: String(m), unit: 'min' };
 }
 
 // ---------- Route sketch ----------

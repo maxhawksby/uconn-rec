@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import type { LiftExercise } from '../data/types';
 import { Text } from '../ui';
 import { colors, radius, space } from '../theme';
-import { bestSet, compactNumber, exerciseVolume } from './model';
+import { bestSet, exerciseVolume } from './model';
+import { compactNumber } from '../data/selectors';
 
 /** Every exercise with its full set table. The heaviest set of each exercise is marked. */
 export function ExerciseTable({ exercises }: { exercises: LiftExercise[] }) {

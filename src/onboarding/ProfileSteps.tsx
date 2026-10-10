@@ -62,8 +62,7 @@ export function ProfileStep({ school, first, last, year, onChange, progress, onB
           onSubmitEditing={() => lastRef.current?.focus()}
         />
         <Input
-          // React 19 passes ref as a prop and Input spreads it onto TextInput; its Props type just doesn't list it yet.
-          {...({ ref: lastRef } as object)}
+          ref={lastRef}
           label="Last name"
           value={last}
           onChangeText={t => onChange({ last: t })}

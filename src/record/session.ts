@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { Alert, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -55,9 +55,39 @@ export async function loadLiftDraft(): Promise<LiftDraft | null> {
 }
 
 export function saveLiftDraft(draft: LiftDraft) {
+  setLiftInProgress(true);
   AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft)).catch(() => {});
 }
 
 export function clearLiftDraft() {
+  setLiftInProgress(false);
   AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
+}
+
+// Whether a lift is under way, for the tab bar's in-progress dot. Seeded from storage once.
+let liftInProgress = false;
+let seeded = false;
+let writes = 0;
+const listeners = new Set<() => void>();
+
+function setLiftInProgress(value: boolean) {
+  seeded = true;
+  writes++;
+  if (value === liftInProgress) return;
+  liftInProgress = value;
+  listeners.forEach(l => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  if (!seeded) {
+    seeded = true;
+    const before = writes;
+    loadLiftDraft().then(d => { if (d && writes === before) setLiftInProgress(true); });
+  }
+  return () => { listeners.delete(listener); };
+}
+
+export function useLiftInProgress() {
+  return useSyncExternalStore(subscribe, () => liftInProgress);
 }

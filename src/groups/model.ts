@@ -1,5 +1,5 @@
 import type { AppState, FeedItem, Group, GroupKind, GroupMessage, ID, Meetup } from '../data/types';
-import { dayKey, feed, groupMessages, groupsForSchool, upcomingMeetups } from '../data/selectors';
+import { dayKey, feed, groupMessages, groupsForSchool, meetupsForGroup } from '../data/selectors';
 
 // Pure helpers for the Groups feature. They compose the shared selectors and never touch
 // AppState fields directly, so they keep working when the store moves to Supabase.
@@ -48,7 +48,7 @@ export function lastMessage(state: AppState, groupId: ID): GroupMessage | undefi
 export function groupActivity(state: AppState, group: Group, viewerId: ID, now: Date = new Date()): { workouts: FeedItem[]; meetups: Meetup[] } {
   return {
     workouts: feed(state, viewerId, 'campus').filter(i => i.workout.groupId === group.id).slice(0, 20),
-    meetups: upcomingMeetups(state, group.schoolId, now).filter(m => m.groupId === group.id),
+    meetups: meetupsForGroup(state, group.id, now),
   };
 }
 

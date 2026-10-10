@@ -1,7 +1,7 @@
 import type { Workout } from '../data/types';
 import type { Stat } from '../ui';
-import { liftVolume } from '../data/selectors';
-import { bestLift, compactNumber, durationParts, miles, mph, paceParts } from './model';
+import { compactNumber, durationParts, liftVolume, miles, mph, paceParts } from '../data/selectors';
+import { bestLift } from './model';
 
 /** The scoreboard cells for a workout, by kind. Class and other sessions use a duration row instead. */
 export function workoutStats(w: Workout): Stat[] {

@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BackHandler, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useStore } from '../data/store';
-import { groupsForSchool, waitlistStatus } from '../data/selectors';
+import { groupsForSchool, suggestedStudentsFor, waitlistStatus } from '../data/selectors';
 import type { ClassYear, School } from '../data/types';
 import { attempt } from '../ui';
 import { colors } from '../theme';
-import { suggestionsForNewStudent } from './logic';
 import { Welcome } from './Welcome';
 import { SchoolStep } from './SchoolStep';
 import { CodeStep, EmailStep } from './VerifySteps';
@@ -95,7 +94,7 @@ export function OnboardingFlow() {
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
 
   const people = useMemo(
-    () => (school && step === 'people' ? suggestionsForNewStudent(state, school.id, interests, 6) : []),
+    () => (school && step === 'people' ? suggestedStudentsFor(state, school.id, interests, 6) : []),
     [state, school, interests, step],
   );
   const groups = useMemo(() => (school && step === 'people' ? groupsForSchool(state, school.id).slice(0, 4) : []), [state, school, step]);
