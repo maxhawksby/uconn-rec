@@ -37,7 +37,7 @@ export function SchoolStep({ selected, query, onQuery, progress, onBack, onPick,
         key="search"
         value={query}
         onChangeText={onQuery}
-        placeholder="UConn, Storrs, or uconn.edu"
+        placeholder="School, city, or email domain"
         autoCorrect={false}
         autoCapitalize="none"
         returnKeyType="search"
