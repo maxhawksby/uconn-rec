@@ -9,7 +9,7 @@ import { Avatar, Button, EmptyState, Icon, Screen, Text, attempt } from '../ui';
 import { colors, gutter, hitSlop, radius, space } from '../theme';
 import { KIND_INFO, chatRows, groupActivity, memberLabel } from '../groups/model';
 import { KindTile, SectionHeader, Segmented } from '../groups/parts';
-import { Composer, DaySeparator, JoinBar, KeyboardFrame, MessageBubble } from '../groups/chat';
+import { Composer, DaySeparator, JoinBar, KeyboardFrame, MessageBubble, useKeyboardShown } from '../groups/chat';
 import { ListCard, MeetupRow, WorkoutRow } from '../profile/parts';
 
 type Tab = 'chat' | 'members' | 'activity';
@@ -35,8 +35,12 @@ export function GroupDetailScreen({ route, navigation }: RootScreenProps<'GroupD
     ]);
   }
 
+  const keyboard = useKeyboardShown();
+  const compact = keyboard && tab === 'chat';
+
   useLayoutEffect(() => {
     navigation.setOptions({
+      title: compact && group ? group.name.toUpperCase() : '',
       headerRight: member ? () => (
         <Pressable onPress={leave} hitSlop={hitSlop} accessibilityRole="button" accessibilityLabel="Group options">
           <Icon name="ellipsis-horizontal" size={22} color="ink" />
@@ -65,19 +69,26 @@ export function GroupDetailScreen({ route, navigation }: RootScreenProps<'GroupD
     <Screen scroll={false} edges={[]}>
       <KeyboardFrame>
         <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <KindTile kind={group.kind} size={52} />
-            <View style={styles.titleText}>
-              <Text variant="eyebrow" color="muted">{info.label} · {memberLabel(group.memberIds.length)}</Text>
-              <Text variant="title" numberOfLines={2}>{group.name}</Text>
-            </View>
-          </View>
-          {group.description ? <Text variant="small" color="inkSoft" numberOfLines={3}>{group.description}</Text> : null}
-          {member ? (
-            <View style={styles.joined} accessibilityLabel="You're a member">
-              <Icon name="checkmark-circle" size={14} color="turf" />
-              <Text variant="eyebrow" color="turf">Member</Text>
-            </View>
+          {/* While typing, the native header carries the name and the chat gets the room. */}
+          {!compact ? (
+            <>
+              <View style={styles.titleRow}>
+                <KindTile kind={group.kind} size={52} />
+                <View style={styles.titleText}>
+                  <View style={styles.eyebrowRow}>
+                    <Text variant="eyebrow" color="muted">{info.label} · {memberLabel(group.memberIds.length)}</Text>
+                    {member ? (
+                      <View style={styles.joined} accessibilityLabel="You're a member">
+                        <Icon name="checkmark-circle" size={12} color="turf" />
+                        <Text variant="eyebrow" color="turf">Member</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text variant="title" numberOfLines={2}>{group.name}</Text>
+                </View>
+              </View>
+              {group.description ? <Text variant="small" color="inkSoft" numberOfLines={3}>{group.description}</Text> : null}
+            </>
           ) : null}
           <Segmented<Tab> value={tab} onChange={setTab} segments={[
             { key: 'chat', label: 'Chat' },
@@ -163,7 +174,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: gutter, paddingTop: space.sm, paddingBottom: space.md, gap: space.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   titleText: { flex: 1, gap: space.xxs },
-  joined: { flexDirection: 'row', alignItems: 'center', gap: space.xs, alignSelf: 'flex-start', backgroundColor: colors.turfSoft, borderRadius: radius.sm, paddingHorizontal: space.sm, paddingVertical: space.xxs },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
+  joined: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, backgroundColor: colors.turfSoft, borderRadius: radius.sm, paddingHorizontal: space.sm, paddingVertical: space.xxs },
   chatList: { paddingHorizontal: space.md, paddingVertical: space.md },
   pane: { paddingHorizontal: gutter },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md },

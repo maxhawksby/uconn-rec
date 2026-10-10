@@ -22,7 +22,7 @@ export function CreateGroupScreen({ navigation }: RootScreenProps<'CreateGroup'>
   useLayoutEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
-        <Pressable onPress={() => navigation.goBack()} hitSlop={hitSlop} accessibilityRole="button">
+        <Pressable onPress={() => navigation.goBack()} hitSlop={hitSlop} accessibilityRole="button" style={styles.cancel}>
           <Text variant="bodyStrong" color="inkSoft">Cancel</Text>
         </Pressable>
       ),
@@ -91,6 +91,7 @@ export function CreateGroupScreen({ navigation }: RootScreenProps<'CreateGroup'>
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  cancel: { marginRight: space.lg },
   form: { paddingHorizontal: gutter, paddingTop: space.lg, paddingBottom: space.x4, gap: space.xxl },
   field: { gap: space.sm },
   counter: { alignSelf: 'flex-end' },

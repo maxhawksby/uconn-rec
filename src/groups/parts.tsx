@@ -34,18 +34,18 @@ export function KindTile({ kind, size = TILE }: { kind: GroupKind; size?: number
 }
 
 /** Up to `max` overlapping avatars plus a "+n" disc. */
-export function AvatarStack({ students, total, max = 4, size = 24 }: { students: Student[]; total: number; max?: number; size?: number }) {
+export function AvatarStack({ students, total, max = 4, size = 26 }: { students: Student[]; total: number; max?: number; size?: number }) {
   const shown = students.slice(0, max);
   const extra = total - shown.length;
   return (
     <View style={styles.stack} accessibilityLabel={memberLabel(total)}>
       {shown.map((s, i) => (
-        <View key={s.id} style={[styles.stackItem, { marginLeft: i ? -size / 3 : 0, borderRadius: size }]}>
+        <View key={s.id} style={[styles.stackItem, { marginLeft: i ? -space.sm : 0, borderRadius: size }]}>
           <Avatar student={s} size={size} />
         </View>
       ))}
       {extra > 0 ? (
-        <View style={[styles.stackItem, styles.more, { marginLeft: -size / 3, width: size + 2, height: size + 2, borderRadius: size }]}>
+        <View style={[styles.stackItem, styles.more, { marginLeft: -space.sm, width: size + 2, height: size + 2, borderRadius: size }]}>
           <Text variant="tiny" color="inkSoft">+{extra}</Text>
         </View>
       ) : null}

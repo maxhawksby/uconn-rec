@@ -17,16 +17,20 @@ export function statsFor(state: AppState, studentId: ID, viewerId: ID, now: Date
   return { streakDays: streakDays(visible, now), totalSessions: visible.length, week: weeklyTotals(visible, now), prs: personalRecords(visible) };
 }
 
-/** The four scoreboard cells: streak, sessions this week, active time, distance. */
-export function scoreboardStats(stats: ProfileStats): Stat[] {
+/** The scoreboard as two rows: streak and sessions, then active time and distance this week. */
+export function scoreboardRows(stats: ProfileStats): [Stat[], Stat[]] {
   const sec = stats.week.activeSec;
   const time = sec < 3600 ? { value: String(Math.round(sec / 60)), unit: 'min' } : { value: (sec / 3600).toFixed(1), unit: 'hr' };
   const miles = stats.week.distanceKm / KM_PER_MILE;
   return [
-    { label: 'Streak', value: String(stats.streakDays), unit: stats.streakDays === 1 ? 'day' : 'days' },
-    { label: 'Week', value: String(stats.week.sessions), unit: stats.week.sessions === 1 ? 'session' : 'sessions' },
-    { label: 'Time', ...time },
-    { label: 'Dist', value: miles >= 100 ? String(Math.round(miles)) : miles.toFixed(1), unit: 'mi' },
+    [
+      { label: 'Streak', value: String(stats.streakDays), unit: stats.streakDays === 1 ? 'day' : 'days' },
+      { label: 'This week', value: String(stats.week.sessions), unit: stats.week.sessions === 1 ? 'session' : 'sessions' },
+    ],
+    [
+      { label: 'Active time', ...time },
+      { label: 'Distance', value: miles >= 100 || miles === 0 ? String(Math.round(miles)) : miles.toFixed(1), unit: 'mi' },
+    ],
   ];
 }
 

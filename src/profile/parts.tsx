@@ -1,11 +1,11 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import type { Meetup, PersonalRecord, Student, Workout } from '../data/types';
+import type { Meetup, PersonalRecord, ProfileStats, Student, Workout } from '../data/types';
 import { activityName } from '../data/activities';
 import { formatDuration, relativeTime, spotsLeft } from '../data/selectors';
 import { colors, minTouch, radius, space } from '../theme';
-import { Avatar, Card, Chip, Icon, Text } from '../ui';
-import { shortDate, workoutFact, workoutIcon } from './model';
+import { Avatar, Card, Chip, Icon, Scoreboard, Text } from '../ui';
+import { scoreboardRows, shortDate, workoutFact, workoutIcon } from './model';
 
 const ROW_ICON = 40;
 
@@ -29,6 +29,17 @@ export function WorkoutRow({ workout: w, author, onPress, last }: { workout: Wor
   );
 }
 
+/** The profile's signature: two stacked scoreboard rows that read as one ink panel. */
+export function StatBoard({ stats }: { stats: ProfileStats }) {
+  const [top, bottom] = scoreboardRows(stats);
+  return (
+    <View>
+      <Scoreboard stats={top} style={styles.boardTop} />
+      <Scoreboard stats={bottom} style={styles.boardBottom} />
+    </View>
+  );
+}
+
 /** A white card holding a list of rows separated by hairlines. */
 export function ListCard({ children }: { children: React.ReactNode }) {
   return <Card style={styles.listCard}>{children}</Card>;
@@ -42,7 +53,7 @@ export function RecordsList({ prs, onPress }: { prs: PersonalRecord[]; onPress: 
         <Pressable key={pr.exercise} onPress={() => onPress(pr)} accessibilityRole="button"
           accessibilityLabel={`${pr.exercise} record, ${pr.weight} pounds for ${pr.reps} reps, ${shortDate(pr.at)}`}
           style={({ pressed }) => [styles.row, i < prs.length - 1 && styles.rowLine, pressed && styles.pressed]}>
-          <Text variant="stat" color={i === 0 ? 'accent' : 'faint'} style={styles.rank}>{i + 1}</Text>
+          <Text variant="stat" color={i === 0 ? 'ink' : 'faint'} style={styles.rank}>{i + 1}</Text>
           <View style={styles.rowBody}>
             <Text variant="bodyStrong" numberOfLines={1}>{pr.exercise}</Text>
             <Text variant="small" color="muted">{shortDate(pr.at)}</Text>
@@ -118,6 +129,8 @@ export function CountsRow({ counts }: { counts: { label: string; value: number }
 }
 
 const styles = StyleSheet.create({
+  boardTop: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: space.md },
+  boardBottom: { borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.onBoardMuted },
   listCard: { padding: 0, paddingHorizontal: space.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: minTouch + space.lg, paddingVertical: space.md },
   rowLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
