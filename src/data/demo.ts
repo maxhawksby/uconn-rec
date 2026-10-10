@@ -1,4 +1,4 @@
-import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, LiftExercise, Meetup, Student, Workout } from './types';
+import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, LiftExercise, Meetup, RoutePoint, Student, Workout } from './types';
 import { PILOT_SCHOOL_ID } from './schools';
 
 // Fictional seed data for the pilot campus. Every person here is made up. Times are
@@ -13,6 +13,29 @@ export function emptyState(): AppState {
 // Small seeded PRNG so demo data (and tests) are stable.
 function rng(seed: number) {
   return () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+}
+
+// A wobbly closed loop of about `km` around a generic college town, timed evenly over
+// `durationSec`. Good enough to make route sketches and maps look real.
+const ROUTE_CENTER = { lat: 41.8077, lng: -72.254 };
+function loopRoute(r: () => number, km: number, durationSec: number): RoutePoint[] {
+  const count = Math.min(160, Math.max(40, Math.round(km * 14)));
+  const phase = [r() * 6.28, r() * 6.28, r() * 6.28];
+  const shape = Array.from({ length: count + 1 }, (_, i) => {
+    const a = (i / count) * Math.PI * 2;
+    const rad = 1 + 0.28 * Math.sin(2 * a + phase[0]) + 0.16 * Math.sin(3 * a + phase[1]) + 0.08 * Math.sin(5 * a + phase[2]);
+    return { x: Math.cos(a) * rad, y: Math.sin(a) * rad };
+  });
+  let perimeter = 0;
+  for (let i = 1; i < shape.length; i++) perimeter += Math.hypot(shape[i].x - shape[i - 1].x, shape[i].y - shape[i - 1].y);
+  const kmPerUnit = km / perimeter;
+  const start = { lat: ROUTE_CENTER.lat + (r() - 0.5) * 0.02, lng: ROUTE_CENTER.lng + (r() - 0.5) * 0.03 };
+  const kmPerLat = 111.32, kmPerLng = 111.32 * Math.cos((start.lat * Math.PI) / 180);
+  return shape.map((p, i) => ({
+    lat: start.lat + ((p.y - shape[0].y) * kmPerUnit) / kmPerLat,
+    lng: start.lng + ((p.x - shape[0].x) * kmPerUnit) / kmPerLng,
+    t: Math.round((i / count) * durationSec * 1000),
+  }));
 }
 
 type Seed = [id: string, first: string, last: string, year: Student['classYear'], interests: string[], bio: string];
@@ -94,6 +117,23 @@ export function makeDemoState(now: Date = new Date()): AppState {
     for (let k = 1; k <= 5; k++) follows.push({ followerId: s.id, followeeId: students[(i + k * 3) % students.length].id, at: createdAt });
   });
 
+  const groupSeed: [string, string, Group['kind'], string, string[]][] = [
+    ['g-6am', '6AM Lift Club', 'crew', 'Early lifts, no excuses. All levels.', ['jordan', 'kayla', 'marcus', 'devin', 'sofia']],
+    ['g-runners', 'North Campus Runners', 'dorm', 'Easy group runs from the north dorms.', ['priya', 'tomas', 'sofia', 'caleb', 'riley']],
+    ['g-hoops', 'Pickup Hoops', 'crew', 'Nightly full court. Text the chat before you come.', ['liam', 'jordan', 'marcus']],
+    ['g-rugby', 'Club Rugby', 'club', 'Practices, lifts and match days.', ['devin', 'marcus']],
+    ['g-kines', 'Kinesiology Majors', 'major', 'Study, lift, repeat.', ['nia', 'hannah', 'kayla', 'ethan']],
+  ];
+  const groups: Group[] = groupSeed.map(([id, name, kind, description, memberIds]) => ({ id, name, kind, description, memberIds, schoolId: PILOT_SCHOOL_ID, createdBy: memberIds[0], createdAt }));
+
+  // Some workouts are shared into a group the author belongs to, so group Activity tabs have content.
+  const groupFor = (studentId: string, interest: string, n: number) => {
+    const theme: Record<string, string> = { lifting: 'g-6am', powerlifting: 'g-6am', running: 'g-runners', 'trail-running': 'g-runners', basketball: 'g-hoops', rugby: 'g-rugby' };
+    const id = theme[interest] ?? (n % 3 === 0 ? 'g-kines' : undefined);
+    return id && n % 2 === 0 && groups.find(g => g.id === id)?.memberIds.includes(studentId) ? id : undefined;
+  };
+  const routeRng = rng(7);
+
   const workouts: Workout[] = [];
   let n = 0;
   students.forEach((s, si) => {
@@ -103,16 +143,19 @@ export function makeDemoState(now: Date = new Date()): AppState {
       const startedAt = iso(at(daysAgo, 6 + Math.floor(r() * 15), Math.floor(r() * 4) * 15));
       const visibility = r() > 0.85 ? 'friends' : 'campus';
       const id = `w-${s.id}-${n++}`;
-      const base = { id, studentId: s.id, startedAt, visibility } as const;
+      const groupId = visibility === 'campus' ? groupFor(s.id, interest, n) : undefined;
+      const base = { id, studentId: s.id, startedAt, visibility, ...(groupId ? { groupId } : {}) } as const;
       if (['lifting', 'powerlifting', 'bodybuilding'].includes(interest)) {
         workouts.push({ ...base, kind: 'lift', durationSec: (50 + Math.floor(r() * 40)) * 60, ...lift(r, si + daysAgo) });
       } else if (['running', 'trail-running', 'walking'].includes(interest)) {
         const km = Math.round((3 + r() * 9) * 10) / 10;
         const pace = interest === 'walking' ? 600 : 300 + Math.floor(r() * 90);
-        workouts.push({ ...base, kind: 'run', title: interest === 'walking' ? 'Campus walk' : km > 9 ? 'Long run' : 'Easy run', distanceKm: km, durationSec: Math.round(km * pace) });
+        const durationSec = Math.round(km * pace);
+        workouts.push({ ...base, kind: 'run', title: interest === 'walking' ? 'Campus walk' : km > 9 ? 'Long run' : 'Easy run', distanceKm: km, durationSec, route: loopRoute(routeRng, km, durationSec) });
       } else if (interest === 'cycling') {
         const km = Math.round((20 + r() * 40) * 10) / 10;
-        workouts.push({ ...base, kind: 'ride', title: 'Back roads ride', distanceKm: km, durationSec: Math.round(km * 130) });
+        const durationSec = Math.round(km * 130);
+        workouts.push({ ...base, kind: 'ride', title: 'Back roads ride', distanceKm: km, durationSec, route: loopRoute(routeRng, km, durationSec) });
       } else if (SPORT_TITLES[interest]) {
         const mates = students.filter(o => o.id !== s.id && o.interests.includes(interest)).slice(0, 3).map(o => o.id);
         workouts.push({ ...base, kind: 'sport', title: SPORT_TITLES[interest], activityId: interest, withIds: mates, durationSec: (45 + Math.floor(r() * 60)) * 60, result: r() > 0.5 ? 'W 21-17' : undefined });
@@ -130,15 +173,6 @@ export function makeDemoState(now: Date = new Date()): AppState {
     if (fans.length && r() > 0.7) comments.push({ id: `c-${i}`, workoutId: w.id, studentId: fans[Math.floor(r() * fans.length)], body: COMMENTS[i % COMMENTS.length], at: w.startedAt });
   });
 
-  const groupSeed: [string, string, Group['kind'], string, string[]][] = [
-    ['g-6am', '6AM Lift Club', 'crew', 'Early lifts, no excuses. All levels.', ['jordan', 'kayla', 'marcus', 'devin', 'sofia']],
-    ['g-runners', 'North Campus Runners', 'dorm', 'Easy group runs from the north dorms.', ['priya', 'tomas', 'sofia', 'caleb', 'riley']],
-    ['g-hoops', 'Pickup Hoops', 'crew', 'Nightly full court. Text the chat before you come.', ['liam', 'jordan', 'marcus']],
-    ['g-rugby', 'Club Rugby', 'club', 'Practices, lifts and match days.', ['devin', 'marcus']],
-    ['g-kines', 'Kinesiology Majors', 'major', 'Study, lift, repeat.', ['nia', 'hannah', 'kayla', 'ethan']],
-  ];
-  const groups: Group[] = groupSeed.map(([id, name, kind, description, memberIds]) => ({ id, name, kind, description, memberIds, schoolId: PILOT_SCHOOL_ID, createdBy: memberIds[0], createdAt }));
-
   const messages: GroupMessage[] = [];
   groups.forEach(g => (MESSAGES[g.id] ?? []).forEach((body, i) => messages.push({
     id: `m-${g.id}-${i}`, groupId: g.id, studentId: g.memberIds[i % g.memberIds.length], body, at: iso(new Date(now.getTime() - (3 - i) * 50 * 60000)),
@@ -147,8 +181,8 @@ export function makeDemoState(now: Date = new Date()): AppState {
   const ahead = (hours: number) => iso(new Date(Math.ceil((now.getTime() + hours * 3600000) / 900000) * 900000));
   const meetupSeed: [string, string, string, string, number, number, string[], string?][] = [
     ['basketball', 'Full court run, need 4', 'Rec center, court 2', 'liam', 3, 10, ['liam', 'jordan', 'marcus', 'devin', 'caleb'], 'g-hoops'],
-    ['running', 'Easy 5k, 9:30 pace', 'Library steps', 'priya', 15, 12, ['priya', 'sofia', 'riley']],
-    ['lifting', 'Bench + spot partners', 'Rec center weight room', 'kayla', 20, 4, ['kayla', 'jordan']],
+    ['running', 'Easy 5k, 9:30 pace', 'Library steps', 'priya', 15, 12, ['priya', 'sofia', 'riley'], 'g-runners'],
+    ['lifting', 'Bench + spot partners', 'Rec center weight room', 'kayla', 20, 4, ['kayla', 'jordan'], 'g-6am'],
     ['spikeball', 'Spikeball on the great lawn', 'Great lawn by the pond', 'riley', 27, 8, ['riley', 'liam', 'tomas']],
     ['yoga', 'Sunset yoga, bring a mat', 'Hillside overlook', 'hannah', 50, 15, ['hannah', 'ava', 'nia']],
     ['soccer', '7v7 pickup', 'Turf field B', 'tomas', 74, 16, ['tomas', 'caleb']],
