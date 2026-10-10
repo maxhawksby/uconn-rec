@@ -48,3 +48,4 @@ public/expo-go.png
 
 # Local build and validation artifacts
 work/
+.claude/worktrees/
