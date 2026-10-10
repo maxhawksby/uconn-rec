@@ -178,17 +178,22 @@ export function makeDemoState(now: Date = new Date()): AppState {
     id: `m-${g.id}-${i}`, groupId: g.id, studentId: g.memberIds[i % g.memberIds.length], body, at: iso(new Date(now.getTime() - (3 - i) * 50 * 60000)),
   })));
 
-  const ahead = (hours: number) => iso(new Date(Math.ceil((now.getTime() + hours * 3600000) / 900000) * 900000));
-  const meetupSeed: [string, string, string, string, number, number, string[], string?][] = [
-    ['basketball', 'Full court run, need 4', 'Rec center, court 2', 'liam', 3, 10, ['liam', 'jordan', 'marcus', 'devin', 'caleb'], 'g-hoops'],
-    ['running', 'Easy 5k, 9:30 pace', 'Library steps', 'priya', 15, 12, ['priya', 'sofia', 'riley'], 'g-runners'],
-    ['lifting', 'Bench + spot partners', 'Rec center weight room', 'kayla', 20, 4, ['kayla', 'jordan'], 'g-6am'],
-    ['spikeball', 'Spikeball on the great lawn', 'Great lawn by the pond', 'riley', 27, 8, ['riley', 'liam', 'tomas']],
-    ['yoga', 'Sunset yoga, bring a mat', 'Hillside overlook', 'hannah', 50, 15, ['hannah', 'ava', 'nia']],
-    ['soccer', '7v7 pickup', 'Turf field B', 'tomas', 74, 16, ['tomas', 'caleb']],
+  // Meetups land at believable local times (day offset + clock time), never 2am.
+  const meetAt = (days: number, hour: number, minute = 0) => {
+    const d = new Date(now); d.setDate(d.getDate() + days); d.setHours(hour, minute, 0, 0);
+    if (d.getTime() <= now.getTime() + 3600000) d.setDate(d.getDate() + 1);
+    return iso(d);
+  };
+  const meetupSeed: [string, string, string, string, [number, number, number?], number, string[], string?][] = [
+    ['basketball', 'Full court run, need 4', 'Rec center, court 2', 'liam', [0, 20], 9, ['liam', 'jordan', 'marcus', 'devin', 'caleb'], 'g-hoops'],
+    ['running', 'Easy 5k, 9:30 pace', 'Library steps', 'priya', [1, 7, 30], 12, ['priya', 'sofia', 'riley'], 'g-runners'],
+    ['lifting', 'Bench + spot partners', 'Rec center weight room', 'kayla', [1, 18], 4, ['kayla', 'jordan'], 'g-6am'],
+    ['spikeball', 'Spikeball on the great lawn', 'Great lawn by the pond', 'riley', [2, 16], 8, ['riley', 'liam', 'tomas']],
+    ['yoga', 'Sunset yoga, bring a mat', 'Hillside overlook', 'hannah', [3, 18, 30], 15, ['hannah', 'ava', 'nia']],
+    ['soccer', '7v7 pickup', 'Turf field B', 'tomas', [4, 17], 16, ['tomas', 'caleb']],
   ];
-  const meetups: Meetup[] = meetupSeed.map(([activityId, title, location, hostId, hours, capacity, attendeeIds, groupId], i) => ({
-    id: `mt-${i}`, schoolId: PILOT_SCHOOL_ID, activityId, title, location, hostId, startsAt: ahead(hours), capacity, attendeeIds, groupId, createdAt: iso(new Date(now.getTime() - 86400000)),
+  const meetups: Meetup[] = meetupSeed.map(([activityId, title, location, hostId, [days, hour, minute], capacity, attendeeIds, groupId], i) => ({
+    id: `mt-${i}`, schoolId: PILOT_SCHOOL_ID, activityId, title, location, hostId, startsAt: meetAt(days, hour, minute), capacity, attendeeIds, groupId, createdAt: iso(new Date(now.getTime() - 86400000)),
   }));
 
   const waitlist = [
