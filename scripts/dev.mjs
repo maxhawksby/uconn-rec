@@ -13,7 +13,7 @@ const port = process.env.PORT || '8081';
 const tunnel = process.argv.includes('--tunnel');
 if (lan && !tunnel) {
   const url = `exp://${lan}:${port}`;
-  await QRCode.toFile(path.join(root, 'public', 'expo-go.png'), url, { width: 280, margin: 3, color: { dark: '#071C3E', light: '#FFFFFF' } });
+  await QRCode.toFile(path.join(root, 'public', 'expo-go.png'), url, { width: 280, margin: 3, color: { dark: '#14161B', light: '#FFFFFF' } });
   console.log(`iPhone Expo Go: ${url}\nScan the QR at http://localhost:${port}/connect.html (same Wi-Fi).`);
 }
 const env = { ...process.env, DOTSLASH_CACHE: path.join(cache, 'dotslash'), EXPO_NO_TELEMETRY: '1' };
