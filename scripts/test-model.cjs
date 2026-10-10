@@ -139,4 +139,44 @@ check('Demo data is fictional, at the pilot school, and has every workout kind',
   for (const k of ['lift', 'run', 'ride', 'sport', 'class']) assert(s.workouts.some(x => x.kind === k), k);
   assert(s.workouts.every(x => new Date(x.startedAt) <= NOW));
 });
+// ---------- Onboarding logic (src/onboarding/logic.ts) ----------
+const O = load('src/onboarding/logic.ts');
+const top = (q, n = 1) => [...O.fuzzySearchSchools(q).slice(0, n).map(s => s.id)]; // copy out of the vm realm for deepEqual
+check('School search: short name, full name, city, domain and email', () => {
+  assert.deepEqual(top('UConn'), ['uconn']);
+  assert.deepEqual(top('university of connecticut'), ['uconn']);
+  assert.deepEqual(top('storrs'), ['uconn']);
+  assert.deepEqual(top('uconn.edu'), ['uconn']);
+  assert.deepEqual(top('jane@grad.uconn.edu'), ['uconn']);
+  assert.deepEqual(top('tamu'), ['texas-am']);
+  assert.deepEqual(top('texas a&m'), ['texas-am']);
+  assert.deepEqual(top('umass amherst'), ['umass-amherst']);
+});
+check('School search: tolerates typos, ranks pilot first when empty, no junk matches', () => {
+  assert.deepEqual(top('conecticut'), ['uconn']);
+  assert(top('massachusets', 5).includes('umass-amherst'));
+  assert.equal(O.fuzzySearchSchools('')[0].id, 'uconn');
+  assert.equal(O.fuzzySearchSchools('xyzzy').length, 0);
+  assert(O.fuzzySearchSchools('umass').every(s => s.shortName.startsWith('UMass')));
+});
+check('Email check: matches chosen school, detects another school, rejects personal email', () => {
+  assert.equal(O.checkSchoolEmail('a@UConn.edu', 'uconn').status, 'ok');
+  assert.equal(O.checkSchoolEmail('a@grad.uconn.edu', 'uconn').status, 'ok');
+  const other = O.checkSchoolEmail('a@yale.edu', 'uconn');
+  assert.equal(other.status, 'other-school'); assert.equal(other.school.id, 'yale');
+  assert.equal(O.checkSchoolEmail('a@gmail.com', 'uconn').status, 'not-edu');
+  assert.equal(O.checkSchoolEmail('a@nowhere.edu', 'uconn').status, 'unknown-edu');
+  assert.equal(O.checkSchoolEmail('a@uconn', 'uconn').status, 'typing');
+  assert.equal(O.checkSchoolEmail('', 'uconn').status, 'empty');
+  assert.equal(O.checkSchoolEmail('a@umass.edu', 'umass-amherst').status, 'ok'); // waitlist school still verifies the domain
+});
+check('Code helpers and pre-account suggestions', () => {
+  assert.equal(O.cleanCode('48 29-13x9'), '482913');
+  assert.equal(O.formatCode('482913'), '482 913');
+  const s = D.makeDemoState(NOW);
+  const sug = O.suggestionsForNewStudent(s, 'uconn', ['basketball'], 4);
+  assert.equal(sug.length, 4);
+  assert(sug[0].shared.includes('basketball'));
+  assert.equal(O.suggestionsForNewStudent(s, 'yale', ['basketball']).length, 0);
+});
 console.log(`${count} model checks passed.`);
