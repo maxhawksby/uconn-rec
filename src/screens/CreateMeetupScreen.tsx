@@ -1,11 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootScreenProps } from '../navigation/types';
 import { useMe, useStore } from '../data/store';
 import { groupById, myGroups } from '../data/selectors';
 import { ACTIVITY_BY_ID } from '../data/activities';
-import { Button, Chip, Input, Text, attempt } from '../ui';
+import { Button, Chip, Input, KeyboardFrame, Text, attempt } from '../ui';
 import { colors, gutter, space } from '../theme';
 import { ActivityPicker, CapacityStepper, DayTimePicker } from '../meetups/pickers';
 import {
@@ -50,9 +50,6 @@ export function CreateMeetupScreen({ route, navigation }: RootScreenProps<'Creat
   const form = { activityId, title: shownTitle, location, startsAt, capacity };
   const errors = submitted ? validateMeetupForm(form, now) : {};
 
-  // Keyboard: offset the avoiding view by where it sits on screen (under the modal header).
-  const frame = useRef<View>(null);
-  const [kbOffset, setKbOffset] = useState(0);
   const scroll = useRef<ScrollView>(null);
   const fieldY = useRef<Partial<Record<Field, number>>>({});
   const track = (f: Field) => (e: LayoutChangeEvent) => { fieldY.current[f] = e.nativeEvent.layout.y; };
@@ -83,8 +80,7 @@ export function CreateMeetupScreen({ route, navigation }: RootScreenProps<'Creat
 
   return (
     <SafeAreaView style={styles.root} edges={['bottom']}>
-      <View ref={frame} style={styles.flex} onLayout={() => frame.current?.measureInWindow((_x, y) => setKbOffset(y))}>
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={kbOffset}>
+      <KeyboardFrame>
           <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
             <Text variant="small" color="muted" style={styles.lede}>Post a pickup game or group workout. Anyone at your school can join in one tap.</Text>
 
@@ -141,8 +137,7 @@ export function CreateMeetupScreen({ route, navigation }: RootScreenProps<'Creat
             <Text variant="eyebrow" color="muted" center numberOfLines={1}>{summary}</Text>
             <Button label="Post meetup" icon="megaphone-outline" block onPress={submit} />
           </View>
-        </KeyboardAvoidingView>
-      </View>
+      </KeyboardFrame>
     </SafeAreaView>
   );
 }

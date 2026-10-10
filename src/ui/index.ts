@@ -13,3 +13,4 @@ export { SchoolBadge } from './SchoolBadge';
 export { Input } from './Input';
 export { attempt } from './attempt';
 export type { Attempt } from './attempt';
+export { KeyboardFrame } from './KeyboardFrame';

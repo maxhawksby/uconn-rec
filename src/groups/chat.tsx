@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Student } from '../data/types';
 import { colors, minTouch, radius, space, type } from '../theme';
@@ -20,24 +20,6 @@ export function useKeyboardShown() {
     return () => { show.remove(); hide.remove(); };
   }, []);
   return shown;
-}
-
-/**
- * KeyboardAvoidingView that measures its own distance from the top of the window (the
- * native header) and uses it as the offset, so the composer sits exactly on the keyboard
- * without depending on header-height internals. 'padding' is safe on Android too: under
- * edge-to-edge the window may not resize, and when it does the computed overlap is zero.
- */
-export function KeyboardFrame({ children }: { children: React.ReactNode }) {
-  const ref = useRef<View>(null);
-  const [offset, setOffset] = useState(0);
-  return (
-    <View ref={ref} style={styles.flex} onLayout={() => ref.current?.measureInWindow((_x, y) => setOffset(Math.max(0, y)))}>
-      <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={offset}>
-        {children}
-      </KeyboardAvoidingView>
-    </View>
-  );
 }
 
 export function DaySeparator({ label }: { label: string }) {

@@ -5,11 +5,11 @@ import type { RootScreenProps } from '../navigation/types';
 import type { ID } from '../data/types';
 import { useMe, useStore } from '../data/store';
 import { groupById, groupMessages, studentById } from '../data/selectors';
-import { Avatar, Button, EmptyState, Icon, Screen, Text, attempt } from '../ui';
+import { Avatar, EmptyState, Icon, Screen, KeyboardFrame, Text, attempt } from '../ui';
 import { colors, gutter, hitSlop, radius, space } from '../theme';
 import { KIND_INFO, chatRows, groupActivity, memberLabel } from '../groups/model';
 import { KindTile, SectionHeader, Segmented } from '../groups/parts';
-import { Composer, DaySeparator, JoinBar, KeyboardFrame, MessageBubble, useKeyboardShown } from '../groups/chat';
+import { Composer, DaySeparator, JoinBar, MessageBubble, useKeyboardShown } from '../groups/chat';
 import { ListCard, MeetupRow, WorkoutRow } from '../profile/parts';
 
 type Tab = 'chat' | 'members' | 'activity';

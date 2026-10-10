@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BackHandler, Keyboard, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { BackHandler, Keyboard, StyleSheet } from 'react-native';
 import { useStore } from '../data/store';
 import { groupsForSchool, suggestedStudentsFor, waitlistStatus } from '../data/selectors';
 import type { ClassYear, School } from '../data/types';
-import { attempt } from '../ui';
+import { KeyboardFrame, attempt } from '../ui';
 import { colors } from '../theme';
 import { Welcome } from './Welcome';
 import { SchoolStep } from './SchoolStep';
@@ -135,9 +135,9 @@ export function OnboardingFlow() {
   })();
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardFrame style={styles.flex}>
       <React.Fragment key={step}>{screen}</React.Fragment>
-    </KeyboardAvoidingView>
+    </KeyboardFrame>
   );
 }
 

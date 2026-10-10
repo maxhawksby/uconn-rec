@@ -5,10 +5,9 @@ import type { RootScreenProps } from '../navigation/types';
 import type { GroupKind } from '../data/types';
 import { useMe, useStore } from '../data/store';
 import { groupsForSchool } from '../data/selectors';
-import { Button, Icon, Input, Screen, Text, attempt } from '../ui';
+import { Button, Icon, Input, Screen, KeyboardFrame, Text, attempt } from '../ui';
 import { colors, gutter, hitSlop, radius, space } from '../theme';
 import { DESCRIPTION_MAX, GROUP_KINDS, NAME_MAX, validateGroup } from '../groups/model';
-import { KeyboardFrame } from '../groups/chat';
 
 export function CreateGroupScreen({ navigation }: RootScreenProps<'CreateGroup'>) {
   const { state, actions } = useStore();

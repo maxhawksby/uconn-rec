@@ -1,12 +1,12 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { RootScreenProps } from '../navigation/types';
 import type { Comment, Student, Workout } from '../data/types';
 import { useMe, useStore } from '../data/store';
 import { kudosGivers, relativeTime, studentById, workoutById } from '../data/selectors';
-import { Avatar, Button, EmptyState, Icon, Scoreboard, Text, attempt } from '../ui';
+import { Avatar, Button, EmptyState, Icon, KeyboardFrame, Scoreboard, Text, attempt } from '../ui';
 import { colors, gutter, hitSlop, minTouch, radius, space, type } from '../theme';
 import { AuthorRow, WorkoutBody, activityIcon, activityLabel } from '../feed/WorkoutCard';
 import { ExerciseTable } from '../feed/ExerciseTable';
@@ -25,8 +25,6 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
   const keyboardUp = useKeyboardVisible();
   const [removed, setRemoved] = useState(false);
   const [draft, setDraft] = useState('');
-  const [offset, setOffset] = useState(0);
-  const root = useRef<View>(null);
   const scroll = useRef<ScrollView>(null);
   const scrollToEndNext = useRef(false);
   const now = useMemo(() => new Date(), [state]);
@@ -83,10 +81,7 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
   const openProfile = (s: Student) => navigation.navigate('StudentProfile', { studentId: s.id });
 
   return (
-    // The offset is this screen's distance from the top of the window (the stack header),
-    // measured so the composer clears the keyboard on every device without guessing.
-    <View ref={root} style={styles.root} onLayout={() => root.current?.measureInWindow((_x, y) => setOffset(y))}>
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={offset}>
+    <KeyboardFrame style={styles.root}>
       <ScrollView
         ref={scroll}
         contentContainerStyle={styles.content}
@@ -199,8 +194,7 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
           <Icon name="arrow-up" size={20} color={trimmed ? 'onAccent' : 'faint'} />
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
-    </View>
+    </KeyboardFrame>
   );
 }
 

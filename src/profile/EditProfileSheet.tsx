@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { CLASS_YEARS, type ClassYear, type Student } from '../data/types';
 import { ACTIVITIES, CATEGORIES, CATEGORY_LABEL } from '../data/activities';
 import { colors, gutter, hitSlop, minTouch, space } from '../theme';
-import { Chip, Input, Text, attempt } from '../ui';
+import { Chip, Input, KeyboardFrame, Text, attempt } from '../ui';
 import { useStore } from '../data/store';
 
 const BIO_MAX = 160;
@@ -52,7 +52,7 @@ export function EditProfileSheet({ visible, me, onClose }: Props) {
               <Text variant="bodyStrong" color="accent">Save</Text>
             </Pressable>
           </View>
-          <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardFrame>
             <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
               <View style={styles.row}>
                 <View style={styles.flex}>
@@ -91,7 +91,7 @@ export function EditProfileSheet({ visible, me, onClose }: Props) {
                 ))}
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </KeyboardFrame>
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

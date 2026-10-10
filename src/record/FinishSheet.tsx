@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { colors, gutter, minTouch, radius, space } from '../theme';
-import { Button, Icon, Input, Scoreboard, Text } from '../ui';
+import { Button, Icon, Input, KeyboardFrame, Scoreboard, Text } from '../ui';
 import type { Visibility, WorkoutKind } from '../data/types';
 import { suggestTitle } from './math';
 import { setLabel } from './lift';
@@ -46,7 +46,7 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
     <Modal visible={!!finished} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
       <SafeAreaProvider>
         <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-          <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <KeyboardFrame>
             <View style={styles.header}>
               <View style={styles.flex}>
                 <Text variant="eyebrow" color="accent">{finished ? (finished.activityName ?? KIND_LABEL[finished.draft.kind]) : ''}</Text>
@@ -99,7 +99,7 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
             <View style={styles.footer}>
               <Button label="Post workout" block loading={posting} disabled={!!titleError} onPress={() => onPost({ title, note, visibility })} />
             </View>
-          </KeyboardAvoidingView>
+          </KeyboardFrame>
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
