@@ -33,7 +33,7 @@ export function useBackGuard(enabled: boolean, onBack: () => void) {
 }
 
 // The lift draft survives app restarts: losing a half-logged session is the worst outcome.
-const DRAFT_KEY = 'deans-lift-record-lift-draft-v1';
+const DRAFT_KEY = 'valence-record-lift-draft-v1';
 
 export type LiftDraft = { startedAt: number; exercises: ExerciseDraft[] };
 

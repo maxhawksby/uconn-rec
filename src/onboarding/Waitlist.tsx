@@ -62,7 +62,7 @@ export function Waitlist({ school, email, status, onStartOver }: Props) {
       <View key="why" style={styles.why}>
         <Text variant="h2">Why wait?</Text>
         <Text variant="body" color="inkSoft">
-          Dean's Lift works when your friends are on it. We open a campus once enough students join, so the feed, meetups and crews are busy from day one.
+          Valence works when your friends are on it. We open a campus once enough students join, so the feed, meetups and crews are busy from day one.
         </Text>
       </View>
 

@@ -17,9 +17,8 @@ export function Welcome({ onStart }: { onStart: () => void }) {
     <SafeAreaView style={styles.root} edges={['top']}>
       <Stagger style={styles.body} step={60}>
         <Text key="eyebrow" variant="eyebrow" color="muted" style={styles.eyebrow}>For college students · {SCHOOLS.length} campuses</Text>
-        <View key="mark" style={styles.markWrap} accessible accessibilityRole="header" accessibilityLabel="Dean's Lift">
-          <Text variant="hero" style={styles.mark}>Dean's</Text>
-          <Text variant="hero" style={styles.mark}>Lift</Text>
+        <View key="mark" style={styles.markWrap} accessible accessibilityRole="header" accessibilityLabel="Valence">
+          <Text variant="hero" style={styles.mark}>Valence</Text>
         </View>
         {LANES.map((lane, i) => (
           <View key={lane} style={[styles.lane, i === LANES.length - 1 && styles.laneLast]}>

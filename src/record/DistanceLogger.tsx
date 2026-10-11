@@ -139,7 +139,7 @@ export function DistanceLogger({ kind, manual, onFinish, onDiscard }: Props) {
             icon={phase === 'off' ? 'navigate-circle-outline' : 'location-outline'}
             title={phase === 'ask' ? 'Track your route' : phase === 'off' ? 'Location is off' : 'Location is blocked'}
             body={phase === 'ask'
-              ? `Dean's Lift uses your location only while this screen is open, to map your ${LABEL[kind].toLowerCase()} and measure distance and ${kind === 'ride' ? 'speed' : 'pace'}.`
+              ? `Valence uses your location only while this screen is open, to map your ${LABEL[kind].toLowerCase()} and measure distance and ${kind === 'ride' ? 'speed' : 'pace'}.`
               : phase === 'off'
                 ? 'Turn on Location Services in your phone settings, or enter your distance yourself.'
                 : canAskAgain ? 'Allow location to map your route, or enter your distance yourself.' : 'Turn on location for Expo Go in Settings, or enter your distance yourself.'}

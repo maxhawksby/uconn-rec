@@ -83,7 +83,7 @@ export function ProfileScreen({ navigation }: TabScreenProps<'Profile'>) {
         <SettingsRow icon="refresh-outline" label="Reset demo data" detail="Erase this device and reload the demo campus" danger onPress={confirmReset} />
         <SettingsRow icon="log-out-outline" label="Sign out" onPress={confirmSignOut} last />
       </ListCard>
-      <Text variant="tiny" color="faint" center style={styles.footnote}>Dean's Lift is independent and not affiliated with any school.</Text>
+      <Text variant="tiny" color="faint" center style={styles.footnote}>Valence is independent and not affiliated with any school.</Text>
 
       <EditProfileSheet visible={editing} me={me} onClose={() => setEditing(false)} />
     </Screen>

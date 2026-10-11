@@ -4,7 +4,7 @@ import { colors, radius, space } from '../theme';
 import { Text } from './Text';
 import { SCHOOL_BY_ID } from '../data/schools';
 
-/** Text-only school tag. Never a logo or school color: Dean's Lift is independent. */
+/** Text-only school tag. Never a logo or school color: Valence is independent. */
 export function SchoolBadge({ schoolId, verified = true }: { schoolId: string; verified?: boolean }) {
   const school = SCHOOL_BY_ID[schoolId];
   if (!school) return null;

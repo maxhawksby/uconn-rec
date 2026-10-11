@@ -1,4 +1,4 @@
-// Dean's Lift design tokens. Screens import from here - no inline hex values or magic numbers.
+// Valence design tokens. Screens import from here - no inline hex values or magic numbers.
 // Direction: a scoreboard and a running track. Cool court-gray ground, ink panels,
 // track-orange for the one action that matters. See DESIGN.md.
 

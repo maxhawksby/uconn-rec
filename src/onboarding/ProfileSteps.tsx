@@ -138,7 +138,7 @@ export function PeopleStep({ school, people, groups, following, joined, onToggle
       eyebrow="Optional"
       title="Find your crew"
       lede="Follow a few people so your feed isn't empty. You can always do this later."
-      footer={<Button label={picks ? "Enter Dean's Lift" : "Skip and enter Dean's Lift"} icon={picks ? 'arrow-forward' : undefined} onPress={onFinish} block />}>
+      footer={<Button label={picks ? "Enter Valence" : "Skip and enter Valence"} icon={picks ? 'arrow-forward' : undefined} onPress={onFinish} block />}>
       {people.length === 0 && groups.length === 0 ? (
         <EmptyState key="empty" icon="people-outline" title="You're one of the first" body={`Nobody else from ${school.shortName} is here yet. Post a workout and invite your friends.`} />
       ) : null}

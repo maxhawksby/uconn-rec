@@ -1,4 +1,4 @@
-# Dean's Lift - design system
+# Valence - design system
 
 Tokens live in `src/theme.ts`; primitives in `src/ui/`. Screens use these and never inline hex values or one-off sizes.
 

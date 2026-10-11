@@ -1,4 +1,4 @@
-# Dean's Lift
+# Valence
 
 A Strava-style fitness community for college students. Verify your school email, log any workout (lifting, runs, rides, pickup games, club practices, classes), and see what your friends, crews and campus are doing. It's independent and not affiliated with any university. The pilot campus is UConn; other schools join a waitlist.
 

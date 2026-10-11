@@ -1,6 +1,6 @@
 import type { School } from './types';
 
-// Real schools and their student email domains. Names only: Dean's Lift is independent and
+// Real schools and their student email domains. Names only: Valence is independent and
 // uses no school logos, colors or marks. Subdomains (e.g. grad.uconn.edu) match automatically.
 // One pilot campus is open; every other school collects a waitlist.
 type Row = [id: string, name: string, shortName: string, domains: string, city: string, state: string];

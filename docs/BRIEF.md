@@ -1,14 +1,14 @@
-# Dean's Lift - Brief
+# Valence - Brief
 
-*Working name, October 9, 2026. Replaces the UConn Rec concept.*
+*October 9, 2026, renamed from Dean's Lift on October 10. Replaces the UConn Rec concept. Valence is the chemistry term for how many bonds an atom can form: fitness plus connection.*
 
 ## What & why
 
-UConn Rec declined to partner because they are committed to their vendor, Fusion. So Dean's Lift is an independent app, not tied to any one school. It is a Strava-style fitness community built only for college students. Students verify their school email, log every kind of workout (lifting first, plus runs, rides, pickup games, club practices and classes), and see what their friends, teams and campus are doing. Gym apps run by schools handle bookings and capacity. Dean's Lift owns the social layer that schools will never build: friends, crews, student-run meetups, and campus-vs-campus challenges. We launch at one campus (UConn, unofficially) to build a dense community, then expand school by school.
+UConn Rec declined to partner because they are committed to their vendor, Fusion. So Valence is an independent app, not tied to any one school. It is a Strava-style fitness community built only for college students. Students verify their school email, log every kind of workout (lifting first, plus runs, rides, pickup games, club practices and classes), and see what their friends, teams and campus are doing. Gym apps run by schools handle bookings and capacity. Dean's Lift owns the social layer that schools will never build: friends, crews, student-run meetups, and campus-vs-campus challenges. We launch at one campus (UConn, unofficially) to build a dense community, then expand school by school.
 
 ## Scope (v1)
 
-- **New brand.** The name Dean's Lift, our own colors and imagery. All UConn names, colors, photos and copied Rec content are removed.
+- **New brand.** The name Valence, our own colors and imagery (neutral white, black and grey base with one accent). All UConn names, colors, photos and copied Rec content are removed.
 - **School-first onboarding.** Search for your school, then verify with a one-time code sent to your .edu email. Pilot-school students get in. Everyone else joins a waitlist with a progress message ("your campus unlocks at 50 students").
 - **Home is the friends feed.** Workouts from friends and groups, with kudos and comments.
 - **Record any workout:**
@@ -57,7 +57,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 
 ## Open questions
 
-- **Name check.** A quick search found no "Dean's Lift" app or trademark. A trademark lawyer should confirm before launch or funding.
+- **Name check.** Plain "Valence" is taken in the App Store (a small emotions app), so the store name needs a second part, such as "Valence: Campus Fitness". valence.fit and trainvalence.com looked unregistered on Oct 10; most other Valence domains are taken. A trademark lawyer should confirm before the test build ships.
 - **Pilot unlock number.** How many students unlock a campus (50 is a placeholder)?
 - **Default visibility.** Does a new workout default to friends-only or the whole campus?
 - **Moderation.** Who reviews reports during the pilot?

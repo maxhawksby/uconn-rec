@@ -10,7 +10,7 @@ import { me as selectMe } from './selectors';
 // ActionError with a message safe to show the student. This API is the contract a
 // Supabase repository will implement in milestone 2.
 
-const KEY = 'deans-lift-state-v1';
+const KEY = 'valence-state-v1';
 
 function isAppState(x: unknown): x is AppState {
   const s = x as AppState;
