@@ -94,7 +94,7 @@ export function MeetupDetailScreen({ route, navigation }: RootScreenProps<'Meetu
         <View style={styles.eyebrowRow}>
           <Icon name={activity?.icon ?? 'calendar-outline'} size={16} color="muted" />
           <Text variant="eyebrow" color="muted">{activityName(m.activityId)}</Text>
-          {status === 'live' ? <View style={[styles.pill, styles.livePill]}><Text variant="eyebrow" color="accent">Happening now</Text></View> : null}
+          {status === 'live' ? <View style={[styles.pill, styles.livePill]}><Text variant="eyebrow" color="accentText">Happening now</Text></View> : null}
           {status === 'ended' ? <View style={[styles.pill, styles.endedPill]}><Text variant="eyebrow" color="muted">Ended</Text></View> : null}
         </View>
         <Text variant="title">{m.title}</Text>

@@ -49,7 +49,7 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
           <KeyboardFrame>
             <View style={styles.header}>
               <View style={styles.flex}>
-                <Text variant="eyebrow" color="accent">{finished ? (finished.activityName ?? KIND_LABEL[finished.draft.kind]) : ''}</Text>
+                <Text variant="eyebrow" color="accentText">{finished ? (finished.activityName ?? KIND_LABEL[finished.draft.kind]) : ''}</Text>
                 <Text variant="title">Save workout</Text>
               </View>
               <IconButton icon="close" label="Back to workout" onPress={onCancel} />
@@ -60,13 +60,13 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
               {prs.length ? (
                 <View style={styles.prs}>
                   <View style={styles.prHead}>
-                    <Icon name="trophy" size={18} color="accent" />
+                    <Icon name="trophy" size={18} color="accentText" />
                     <Text variant="h2">{prs.length === 1 ? 'New PR' : `${prs.length} new PRs`}</Text>
                   </View>
                   {prs.map(pr => (
                     <View key={pr.exercise} style={styles.prRow}>
                       <Text variant="bodyStrong" style={styles.flex}>{pr.exercise}</Text>
-                      <Text variant="bodyStrong" color="accent">{setLabel(pr)}</Text>
+                      <Text variant="bodyStrong" color="accentText">{setLabel(pr)}</Text>
                       <Text variant="tiny" color="muted">was {setLabel(pr.previous)}</Text>
                     </View>
                   ))}

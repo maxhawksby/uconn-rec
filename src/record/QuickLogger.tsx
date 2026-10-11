@@ -71,7 +71,7 @@ export function QuickLogger({ mode, preset, interests, friends, onFinish, onDisc
 
         {isSport ? (
           <>
-            <SectionLabel right={withIds.length ? <Text variant="smallStrong" color="accent">{withIds.length} tagged</Text> : undefined}>Played with</SectionLabel>
+            <SectionLabel right={withIds.length ? <Text variant="smallStrong" color="accentText">{withIds.length} tagged</Text> : undefined}>Played with</SectionLabel>
             {friends.length === 0 ? (
               <View style={styles.noFriends}>
                 <Icon name="people-outline" size={20} color="faint" />

@@ -27,7 +27,7 @@ const TAB_ICONS: Record<keyof TabParamList, string> = {
   Feed: 'pulse', Record: 'add', Meetups: 'calendar-clear-outline', Groups: 'people-outline', Profile: 'person-circle-outline',
 };
 
-/** The center Record tab: an orange square that sits above the bar. */
+/** The center Record tab: an accent-colored square that sits above the bar. */
 function RecordButton({ onPress, accessibilityState }: BottomTabBarButtonProps) {
   const live = useLiftInProgress();
   return (

@@ -49,7 +49,7 @@ export function EditProfileSheet({ visible, me, onClose }: Props) {
             </Pressable>
             <Text variant="h2" accessibilityRole="header">Edit profile</Text>
             <Pressable onPress={save} hitSlop={hitSlop} accessibilityRole="button" style={[styles.barSide, styles.barRight]}>
-              <Text variant="bodyStrong" color="accent">Save</Text>
+              <Text variant="bodyStrong" color="accentText">Save</Text>
             </Pressable>
           </View>
           <KeyboardFrame>

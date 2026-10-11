@@ -6,7 +6,7 @@ import { initials } from '../data/selectors';
 import type { Student } from '../data/types';
 
 // Neutral tints picked by id so the same student always gets the same disc.
-const TINTS = [colors.ink, colors.inkSoft, colors.accent, colors.turf, colors.muted];
+const TINTS = [colors.ink, colors.inkSoft, colors.accentText, colors.turf, colors.muted];
 
 export function Avatar({ student, size = 40 }: { student: Pick<Student, 'id' | 'firstName' | 'lastName'>; size?: number }) {
   const tint = TINTS[[...student.id].reduce((n, c) => n + c.charCodeAt(0), 0) % TINTS.length];

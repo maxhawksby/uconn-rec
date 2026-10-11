@@ -54,9 +54,9 @@ export function KudosButton({ workoutId, given, count, isMine, label }: Props) {
       accessibilityValue={{ text: `${shown.count} kudos` }}
       style={({ pressed }) => [styles.button, label && styles.labelled, label && !shown.given && styles.outlined, shown.given && styles.given, pressed && styles.pressed]}>
       <Animated.View style={{ transform: [{ scale }] }}>
-        <Icon name={shown.given ? 'flame' : 'flame-outline'} size={20} color={shown.given ? 'accent' : 'inkSoft'} />
+        <Icon name={shown.given ? 'flame' : 'flame-outline'} size={20} color={shown.given ? 'accentText' : 'inkSoft'} />
       </Animated.View>
-      <Text variant="smallStrong" color={shown.given ? 'accent' : 'inkSoft'}>{text}</Text>
+      <Text variant="smallStrong" color={shown.given ? 'accentText' : 'inkSoft'}>{text}</Text>
     </Pressable>
   );
 }

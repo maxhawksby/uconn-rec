@@ -33,7 +33,7 @@ export function LoggerHeader({ eyebrow, title, onClose, closeLabel = 'Discard wo
     <View style={styles.header}>
       <IconButton icon="close" label={closeLabel} onPress={onClose} />
       <View style={styles.headerText}>
-        <Text variant="eyebrow" color="accent">{eyebrow}</Text>
+        <Text variant="eyebrow" color="accentText">{eyebrow}</Text>
         <Text variant="h2" numberOfLines={1}>{title}</Text>
       </View>
       {right}

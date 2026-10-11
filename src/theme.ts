@@ -1,6 +1,6 @@
 // Valence design tokens. Screens import from here - no inline hex values or magic numbers.
 // Direction: a scoreboard and a running track. Cool court-gray ground, ink panels,
-// track-orange for the one action that matters. See DESIGN.md.
+// neon pink for the one action that matters. See DESIGN.md.
 
 const light = {
   bg: '#F2F3F5', // court gray: app background
@@ -11,10 +11,11 @@ const light = {
   inkSoft: '#3A3F48',
   muted: '#6B717C',
   faint: '#9AA0AA',
-  accent: '#FF5A1F', // track orange: primary action, kudos, live states
-  accentPressed: '#E04812',
-  accentSoft: '#FFE7DD',
-  onAccent: '#FFFFFF',
+  accent: '#FF4FB8', // neon pink: primary action, kudos, live states
+  accentPressed: '#EB3AA4',
+  accentSoft: '#FFE0F2',
+  onAccent: '#14161B', // the pink is bright, so ink sits on it, never white
+  accentText: '#A3105F', // pink for text and icons on light surfaces (the neon itself is too light to read)
   board: '#14161B', // scoreboard panel
   onBoard: '#F2F3F5',
   onBoardMuted: '#8D939D',
@@ -30,7 +31,7 @@ export type Palette = typeof light;
 // Dark is defined now so screens never hard-code light-only assumptions. M1 ships light only.
 const dark: Palette = {
   bg: '#0F1114', surface: '#181B20', sunken: '#22262D', line: '#2C3139', ink: '#F2F3F5', inkSoft: '#C9CDD4',
-  muted: '#8D939D', faint: '#5E646E', accent: '#FF6A33', accentPressed: '#FF5A1F', accentSoft: '#3A2117', onAccent: '#FFFFFF',
+  muted: '#8D939D', faint: '#5E646E', accent: '#FF5FC0', accentPressed: '#FF4FB8', accentSoft: '#3D1530', onAccent: '#14161B', accentText: '#FF7ACB',
   board: '#000000', onBoard: '#F2F3F5', onBoardMuted: '#8D939D', turf: '#3DBA7A', turfSoft: '#163024', danger: '#FF6B5E',
   dangerSoft: '#3A1C19', scrim: 'rgba(0,0,0,0.6)',
 };

@@ -61,7 +61,7 @@ const JOIN_LOOK: Record<'open' | 'going' | 'full', { label: string; icon?: strin
   full: { label: 'Full', bg: 'sunken', fg: 'faint' },
 };
 
-/** One-tap join/leave. Ink (not orange) so the screen's one orange action stays "Post". */
+/** One-tap join/leave. Ink (not the accent) so the screen's one accent action stays "Post". */
 export function JoinToggle({ role, onPress, title }: { role: MeetupRole; onPress: () => void; title: string }) {
   if (role === 'ended') return null;
   if (role === 'host') {

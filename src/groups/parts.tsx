@@ -65,7 +65,7 @@ export function Segmented<K extends string>({ segments, value, onChange }: { seg
           <Pressable key={s.key} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onChange(s.key)}
             style={[styles.seg, on && styles.segOn]}>
             <Text variant="eyebrow" color={on ? 'ink' : 'muted'}>{s.label}</Text>
-            {s.count !== undefined ? <Text variant="eyebrow" color={on ? 'accent' : 'faint'}>{s.count}</Text> : null}
+            {s.count !== undefined ? <Text variant="eyebrow" color={on ? 'accentText' : 'faint'}>{s.count}</Text> : null}
           </Pressable>
         );
       })}
