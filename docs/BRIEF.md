@@ -16,6 +16,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
   - runs and rides with a GPS route map, pace and distance
   - pickup sports and intramurals (sport, duration, who you played with)
   - classes, club practices and other cardio (type and duration)
+- **Workout together.** Tag the friends you trained with on any workout, not just sports. The post shows both names ("Caleb Menash & Hannah Weiss"), lands on each person's profile once they accept the tag, and everyone tagged can add photos to it. Photos also show on the workout's detail screen.
 - **Meetups tab** replaces Classes. A student posts "pickup basketball at 7, need 4." Others join with one tap.
 - **Groups.** Student-made crews (dorms, clubs, teams, majors) with a group chat.
 - **Profile.** Streaks, weekly summary, personal records, and a school badge (text only, never a school logo).
@@ -40,7 +41,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
    - school search, a simulated .edu code step, and the waitlist
    - the feed with kudos and comments
    - the Meetups tab, the generic activity list, and the new five-tab layout (Feed, Record, Meetups, Groups, Profile)
-2. **Real backend.** Local Supabase in Docker. Real sign-up with .edu email codes. The feed, groups, meetups and group chat all sync across two phones. Privacy rules live on the server.
+2. **Real backend.** Local Supabase in Docker. Real sign-up with .edu email codes. The feed, groups, meetups and group chat all sync across two phones. Workout photos (stored in Supabase Storage) and shared workouts with tagged friends. Privacy rules live on the server.
 3. **Recording and stats.** Polished lifting logger, GPS runs and rides with maps, sports and class logging. Streaks, weekly summary, personal records, and opt-in challenges and leaderboards.
 4. **Ready to ship.** Report, block and account deletion. Our own test build (via Expo's build service, EAS) with Apple Health and Health Connect sync. Hosted Supabase. TestFlight once Apple approves the developer account.
 
@@ -51,6 +52,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - Max can log a lifting session, then see it at the top of his feed and give kudos or a comment on a friend's workout.
 - Max can post a meetup and see a second account join it (milestone 2: on a second phone, in real time).
 - Max can sign up on two phones with two .edu emails, follow each other, and see each other's workouts (milestone 2).
+- Max can tag a friend on a lift, the friend accepts on their phone, and both add a photo that shows on the shared post (milestone 2).
 - Max can record a walk outdoors and see the route on a map with distance and pace (milestone 3).
 - Max can join a challenge and see a leaderboard, and a friend who hasn't joined never sees a ranking (milestone 3).
 - Max can install the test build, connect Apple Health, and see an Apple Watch workout appear in the app (milestone 4).
