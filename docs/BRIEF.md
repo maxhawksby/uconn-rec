@@ -4,7 +4,7 @@
 
 ## What & why
 
-UConn Rec declined to partner because they are committed to their vendor, Fusion. So Valence is an independent app, not tied to any one school. It is a Strava-style fitness community built only for college students. Students verify their school email, log every kind of workout (lifting first, plus runs, rides, pickup games, club practices and classes), and see what their friends, teams and campus are doing. Gym apps run by schools handle bookings and capacity. Dean's Lift owns the social layer that schools will never build: friends, crews, student-run meetups, and campus-vs-campus challenges. We launch at one campus (UConn, unofficially) to build a dense community, then expand school by school.
+UConn Rec declined to partner because they are committed to their vendor, Fusion. So Valence is an independent app, not tied to any one school. It is a Strava-style fitness community built only for college students. Students verify their school email, log every kind of workout (lifting first, plus runs, rides, pickup games, club practices and classes), and see what their friends, teams and campus are doing. Gym apps run by schools handle bookings and capacity. Valence owns the social layer that schools will never build: friends, crews, student-run meetups, and campus-vs-campus challenges. We launch at one campus (UConn, unofficially) to build a dense community, then expand school by school.
 
 ## Scope (v1)
 
@@ -32,18 +32,24 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - Strava import. Their API rules forbid showing a user's data to friends.
 - Direct Garmin or Whoop partnerships. Pursue these after forming an LLC; health sync covers most of the need meanwhile.
 - Payments, premium plans, AI coaching, web app.
+- Tapping the phone as a student ID at the gym. Campus card readers only accept credentials the school's card vendor issues and signs with secret keys (Apple Wallet student IDs run on that same school deal). We can't issue one without a partnership, and copying one would be cloning a security credential.
 - Launching beyond the pilot campus.
 
 ## Milestones
 
 1. **Pitch build (by Monday, Oct 12).** Runs in Expo Go with demo data. Includes:
-   - the rebrand to Dean's Lift and removal of all UConn material
+   - the rebrand to Valence and removal of all UConn material
    - school search, a simulated .edu code step, and the waitlist
    - the feed with kudos and comments
    - the Meetups tab, the generic activity list, and the new five-tab layout (Feed, Record, Meetups, Groups, Profile)
 2. **Real backend.** Local Supabase in Docker. Real sign-up with .edu email codes. The feed, groups, meetups and group chat all sync across two phones. Workout photos (stored in Supabase Storage) and shared workouts with tagged friends. Privacy rules live on the server.
 3. **Recording and stats.** Polished lifting logger, GPS runs and rides with maps, sports and class logging. Streaks, weekly summary, personal records, and opt-in challenges and leaderboards.
 4. **Ready to ship.** Report, block and account deletion. Our own test build (via Expo's build service, EAS) with Apple Health and Health Connect sync. Hosted Supabase. TestFlight once Apple approves the developer account.
+
+## Later ideas
+
+- QR check-in at meetups, so the host can see who showed up.
+- A "you're at the gym, start a lift?" prompt when your phone arrives at a saved gym.
 
 ## Acceptance criteria
 
