@@ -1,14 +1,28 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { AppState, ID, NewGroup, NewMeetup, NewWorkout } from './types';
+import type { AppState } from './types';
+import { StoreContext, type Actions, type Store } from './storeContext';
 import * as A from './actions';
 import { makeDemoState, STATE_VERSION } from './demo';
-import { me as selectMe } from './selectors';
+import { me as selectMe, waitlistStatus } from './selectors';
+import { supabase } from './supabase';
+import { RemoteStoreProvider } from './remoteStore';
 
-// The single local data store. Screens read `state` (with selectors from ./selectors) and
-// call `actions`. Every action is synchronous, persists in the background, and throws
-// ActionError with a message safe to show the student. This API is the contract a
-// Supabase repository will implement in milestone 2.
+// The app's data store. Screens read `state` (with selectors from ./selectors) and call
+// `actions`. Two backends implement the same contract:
+// - server (remoteStore.tsx): Supabase, when EXPO_PUBLIC_SUPABASE_URL is set
+// - demo (below): fictional campus data kept on this device, the milestone 1 build
+// Everyday actions are synchronous: the screen updates at once and the server write follows.
+// Sign-up steps are async because they wait on email codes. Both throw ActionError with a
+// message that is safe to show the student.
+
+export type { Actions, Store, WaitlistStatus } from './storeContext';
+
+export function StoreProvider({ children }: { children: React.ReactNode }) {
+  return supabase ? <RemoteStoreProvider db={supabase}>{children}</RemoteStoreProvider> : <DemoStoreProvider>{children}</DemoStoreProvider>;
+}
+
+// ---------- Demo backend ----------
 
 const KEY = 'valence-state-v1';
 
@@ -20,44 +34,10 @@ function isAppState(x: unknown): x is AppState {
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-export type Actions = {
-  // sign-up and account
-  startSignup(input: { email: string; schoolId: ID }): { code: string }; // demo: show the code on screen
-  verifyCode(code: string): void;
-  completeProfile(input: A.ProfileInput): { studentId: ID };
-  updateProfile(patch: Partial<A.ProfileInput>): void;
-  joinWaitlist(input: { email: string; schoolId: ID }): void;
-  signOut(): void;
-  resetDemo(): void; // wipes local data and reseeds the demo campus
-  // workouts
-  logWorkout(input: NewWorkout): { workoutId: ID };
-  deleteWorkout(workoutId: ID): void;
-  toggleKudos(workoutId: ID): { kudoed: boolean };
-  addComment(input: { workoutId: ID; body: string }): { commentId: ID };
-  deleteComment(commentId: ID): void;
-  // people
-  follow(studentId: ID): void;
-  unfollow(studentId: ID): void;
-  // meetups
-  createMeetup(input: NewMeetup): { meetupId: ID };
-  joinMeetup(meetupId: ID): void;
-  leaveMeetup(meetupId: ID): void;
-  cancelMeetup(meetupId: ID): void;
-  // groups
-  createGroup(input: NewGroup): { groupId: ID };
-  joinGroup(groupId: ID): void;
-  leaveGroup(groupId: ID): void;
-  sendGroupMessage(input: { groupId: ID; body: string }): { messageId: ID };
-};
-
-type Store = { state: AppState; ready: boolean; storageError: string; actions: Actions };
-
-const Ctx = createContext<Store | null>(null);
-
-export function StoreProvider({ children }: { children: React.ReactNode }) {
+function DemoStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => makeDemoState());
   const [ready, setReady] = useState(false);
-  const [storageError, setStorageError] = useState('');
+  const [syncError, setSyncError] = useState('');
   const current = useRef(state);
   const queue = useRef(Promise.resolve());
 
@@ -69,7 +49,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const parsed: unknown = JSON.parse(raw);
       if (!isAppState(parsed)) throw new Error('Invalid stored data');
       current.current = parsed; setState(parsed);
-    }).catch(() => { if (active) setStorageError('Saved data could not be loaded. New changes will replace it.'); })
+    }).catch(() => { if (active) setSyncError('Saved data could not be loaded. New changes will replace it.'); })
       .finally(() => { if (active) setReady(true); });
     return () => { active = false; };
   }, []);
@@ -78,8 +58,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const commit = useCallback((next: AppState) => {
     current.current = next; setState(next);
     queue.current = queue.current.then(() => AsyncStorage.setItem(KEY, JSON.stringify(next)))
-      .then(() => setStorageError(''))
-      .catch(() => setStorageError('Storage is unavailable. Changes last for this session only.'));
+      .then(() => setSyncError(''))
+      .catch(() => setSyncError('Storage is unavailable. Changes last for this session only.'));
   }, []);
 
   const actions = useMemo<Actions>(() => {
@@ -89,12 +69,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (next !== current.current) commit(next);
       return result;
     }
+    const later = <R,>(fn: () => R) => new Promise<R>((resolve, reject) => { try { resolve(fn()); } catch (e) { reject(e); } });
     return {
-      startSignup: input => run(s => A.startSignup(s, input, ctx())),
-      verifyCode: code => run(s => A.verifyCode(s, code)),
-      completeProfile: input => run(s => A.completeProfile(s, input, ctx())),
+      startSignup: input => later(() => ({ demoCode: run(s => A.startSignup(s, input, ctx())).code })),
+      verifyCode: code => later(() => run(s => A.verifyCode(s, code))),
+      completeProfile: input => later(() => run(s => A.completeProfile(s, input, ctx()))),
       updateProfile: patch => run(s => A.updateProfile(s, patch)),
-      joinWaitlist: input => run(s => A.joinWaitlist(s, input, ctx())),
+      joinWaitlist: input => later(() => {
+        run(s => A.joinWaitlist(s, input, ctx()));
+        return waitlistStatus(current.current, input.schoolId, input.email);
+      }),
       signOut: () => run(s => A.signOut(s)),
       resetDemo: () => commit(makeDemoState()),
       logWorkout: input => run(s => A.logWorkout(s, input, ctx())),
@@ -115,12 +99,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, [commit]);
 
-  const value = useMemo(() => ({ state, ready, storageError, actions }), [state, ready, storageError, actions]);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  const value = useMemo<Store>(() => ({ backend: 'demo', state, ready, syncError, verifiedSignup: null, actions }), [state, ready, syncError, actions]);
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
 export function useStore() {
-  const store = useContext(Ctx);
+  const store = useContext(StoreContext);
   if (!store) throw new Error('StoreProvider missing');
   return store;
 }

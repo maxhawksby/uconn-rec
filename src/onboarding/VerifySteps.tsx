@@ -18,9 +18,10 @@ type EmailProps = {
   onBack: () => void;
   onSwitchSchool: (school: School) => void;
   onSubmit: () => void;
+  busy?: boolean;
 };
 
-export function EmailStep({ school, email, onEmail, progress, onBack, onSwitchSchool, onSubmit }: EmailProps) {
+export function EmailStep({ school, email, onEmail, progress, onBack, onSwitchSchool, onSubmit, busy }: EmailProps) {
   const check = checkSchoolEmail(email, school.id);
   const [touched, setTouched] = useState(false);
   const domain = `@${school.emailDomains[0]}`;
@@ -56,7 +57,7 @@ export function EmailStep({ school, email, onEmail, progress, onBack, onSwitchSc
       eyebrow={school.name}
       title="Prove you're a student"
       lede={school.isPilot ? "We'll send a 6-digit code to your school email." : `${school.shortName} isn't open yet. Your school email saves your spot on the waitlist.`}
-      footer={<Button label={school.isPilot ? 'Send code' : 'Join the waitlist'} onPress={onSubmit} disabled={!ready} block />}>
+      footer={<Button label={school.isPilot ? 'Send code' : 'Join the waitlist'} onPress={onSubmit} loading={busy} disabled={!ready} block />}>
       <View key="field" style={styles.field}>
         <Input
           label="School email"
@@ -85,23 +86,27 @@ export function EmailStep({ school, email, onEmail, progress, onBack, onSwitchSc
 
 type CodeProps = {
   email: string;
-  demoCode: string;
-  verified: boolean;
+  demoCode?: string; // demo build only: shown on screen because no email is sent
+  inboxUrl?: string; // local development: where the test inbox lives
+  verifiedCode: string; // the code that verified, or '' if not verified yet
+  sendCount: number; // bumps when a new code is sent, which clears the boxes
   progress: Progress;
   onBack: () => void;
-  onResend: () => void;
-  onVerify: (code: string) => boolean; // false = wrong code
+  onResend: () => Promise<void>;
+  onVerify: (code: string) => Promise<string | null>; // error message, or null when verified
   onNext: () => void;
 };
 
-export function CodeStep({ email, demoCode, verified, progress, onBack, onResend, onVerify, onNext }: CodeProps) {
-  const [code, setCode] = useState(verified ? demoCode : '');
+export function CodeStep({ email, demoCode, inboxUrl, verifiedCode, sendCount, progress, onBack, onResend, onVerify, onNext }: CodeProps) {
+  const verified = !!verifiedCode;
+  const [code, setCode] = useState(verifiedCode);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState<'verify' | 'resend' | null>(null);
   const [focused, setFocused] = useState(false);
   const input = useRef<TextInput>(null);
 
   // A new code clears the boxes.
-  useEffect(() => { if (!verified) { setCode(''); setError(''); } }, [demoCode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!verified) { setCode(''); setError(''); } }, [sendCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function change(text: string) {
     const next = cleanCode(text);
@@ -110,10 +115,20 @@ export function CodeStep({ email, demoCode, verified, progress, onBack, onResend
     if (next.length === 6) submit(next);
   }
 
-  function submit(value = code) {
+  async function submit(value = code) {
     if (verified) return onNext();
+    if (busy) return;
     if (value.length < 6) { setError('Enter all 6 digits.'); return; }
-    if (!onVerify(value)) setError("That code doesn't match. Check the demo code above.");
+    setBusy('verify');
+    const problem = await onVerify(value);
+    setBusy(null);
+    if (problem) setError(problem);
+  }
+
+  async function resend() {
+    setBusy('resend');
+    await onResend();
+    setBusy(null);
   }
 
   return (
@@ -122,15 +137,25 @@ export function CodeStep({ email, demoCode, verified, progress, onBack, onResend
       onBack={onBack}
       eyebrow="Check your email"
       title="Enter your code"
-      lede={`We sent a 6-digit code to ${email}.`}
-      footer={<Button label={verified ? 'Continue' : 'Verify'} onPress={() => submit()} disabled={!verified && code.length < 6} block />}>
-      <View key="demo" style={styles.demo} accessible accessibilityLabel={`Demo build. No email is sent. Your code is ${demoCode.split('').join(' ')}`}>
-        <View style={styles.demoHead}>
-          <View style={styles.demoTag}><Text variant="statLabel" color="ink">Demo</Text></View>
-          <Text variant="statLabel" color="onBoardMuted">No email is sent in this build</Text>
+      lede={`We sent a 6-digit code to ${email}.${demoCode ? '' : ' It can take a minute to arrive.'}`}
+      footer={<Button label={verified ? 'Continue' : 'Verify'} onPress={() => submit()} loading={busy === 'verify'} disabled={!verified && code.length < 6} block />}>
+      {demoCode ? (
+        <View key="demo" style={styles.demo} accessible accessibilityLabel={`Demo build. No email is sent. Your code is ${demoCode.split('').join(' ')}`}>
+          <View style={styles.demoHead}>
+            <View style={styles.demoTag}><Text variant="statLabel" color="ink">Demo</Text></View>
+            <Text variant="statLabel" color="onBoardMuted">No email is sent in this build</Text>
+          </View>
+          <Text variant="stat" color="onBoard" style={styles.demoCode} selectable>{formatCode(demoCode)}</Text>
         </View>
-        <Text variant="stat" color="onBoard" style={styles.demoCode} selectable>{formatCode(demoCode)}</Text>
-      </View>
+      ) : inboxUrl ? (
+        <View key="inbox" style={styles.demo}>
+          <View style={styles.demoHead}>
+            <View style={styles.demoTag}><Text variant="statLabel" color="ink">Dev</Text></View>
+            <Text variant="statLabel" color="onBoardMuted">Local server: codes land in the test inbox</Text>
+          </View>
+          <Text variant="smallStrong" color="onBoard" selectable>{inboxUrl}</Text>
+        </View>
+      ) : null}
 
       <View key="boxes" style={styles.field}>
         <Pressable onPress={() => input.current?.focus()} accessibilityLabel="Verification code" accessibilityHint="Enter the 6-digit code" style={styles.boxes}>
@@ -148,7 +173,7 @@ export function CodeStep({ email, demoCode, verified, progress, onBack, onResend
             onChangeText={change}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            editable={!verified}
+            editable={!verified && !busy}
             autoFocus={!verified}
             keyboardType="number-pad"
             textContentType="oneTimeCode"
@@ -167,7 +192,7 @@ export function CodeStep({ email, demoCode, verified, progress, onBack, onResend
         <Card key="resend" style={styles.resend}>
           <Text variant="small" color="muted">Didn't get it, or typed the wrong email?</Text>
           <View style={styles.resendActions}>
-            <Button label="New code" size="sm" variant="secondary" onPress={onResend} />
+            <Button label="New code" size="sm" variant="secondary" onPress={resend} loading={busy === 'resend'} disabled={busy === 'verify'} />
             <Button label="Edit email" size="sm" variant="ghost" onPress={onBack} />
           </View>
         </Card>

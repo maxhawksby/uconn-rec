@@ -14,7 +14,7 @@ import { WeekHeader } from '../feed/WeekHeader';
 type Scope = 'following' | 'campus';
 
 export function FeedScreen({ navigation }: TabScreenProps<'Feed'>) {
-  const { state, storageError } = useStore();
+  const { state, syncError } = useStore();
   const me = useMe();
   const school = SCHOOL_BY_ID[me.schoolId];
   const [scope, setScope] = useState<Scope>('following');
@@ -49,10 +49,10 @@ export function FeedScreen({ navigation }: TabScreenProps<'Feed'>) {
 
   const header = (
     <View>
-      {storageError ? (
+      {syncError ? (
         <View style={styles.banner} accessibilityRole="alert">
           <Icon name="cloud-offline-outline" size={16} color="danger" />
-          <Text variant="small" color="danger" style={styles.flex}>{storageError}</Text>
+          <Text variant="small" color="danger" style={styles.flex}>{syncError}</Text>
         </View>
       ) : null}
       <WeekHeader stats={stats} onRecord={record} />

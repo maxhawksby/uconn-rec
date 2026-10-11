@@ -1,6 +1,6 @@
 -- Privacy rules, tested by acting as different students. Run with `npm run test:db`.
 begin;
-select plan(45);
+select plan(47);
 
 -- Act as a signed-in student (or anon with null), the way the API does.
 create function pg_temp.act_as(uid uuid, email text default null) returns void language plpgsql as $$
@@ -15,6 +15,10 @@ begin
   end if;
 end $$;
 grant execute on function pg_temp.act_as to anon, authenticated;
+
+-- Start from an empty campus (seeded demo data would skew the counts). The whole file runs
+-- in one transaction that rolls back, so the real data comes back afterwards.
+delete from public.waitlist; delete from public.meetups; delete from public.groups; delete from auth.users;
 
 -- Ava, Ben and Cam are at UConn. Yuki is at Yale, opened just for this test.
 update public.schools set is_pilot = true where id = 'yale';
@@ -47,6 +51,12 @@ insert into public.students (id, school_id, first_name, last_name, class_year) v
 select pg_temp.act_as('e0000000-0000-0000-0000-000000000000', 'eve@umass.edu');
 select throws_ok($$ insert into public.students (id, school_id, first_name, last_name, class_year) values ('e0000000-0000-0000-0000-000000000000', 'uconn', 'Eve', 'E', 'Junior') $$,
   'P0001', 'Your campus is not open yet.', 'waitlisted students cannot create a profile');
+
+-- Mid sign-up (verified, no profile yet) a student can already find classmates and groups.
+select pg_temp.act_as('f0000000-0000-0000-0000-000000000000', 'fay@uconn.edu');
+select is((select count(*)::int from public.students), 3, 'verified students see their campus before finishing their profile');
+select pg_temp.act_as('f0000000-0000-0000-0000-000000000000', 'fay@umass.edu');
+select is((select count(*)::int from public.students), 0, 'waitlisted emails see no one');
 
 select pg_temp.act_as('d0000000-0000-0000-0000-000000000000', 'yuki@yale.edu');
 select is((select count(*)::int from public.students), 1, 'students only see their own campus');

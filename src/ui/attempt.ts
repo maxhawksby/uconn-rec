@@ -15,3 +15,13 @@ export function attempt<R>(fn: () => R, title = "Couldn't do that"): Attempt<R> 
     throw e;
   }
 }
+
+/** Async version of attempt, for actions that wait on the network (sign-up steps). */
+export async function attemptAsync<R>(fn: () => Promise<R>, title = "Couldn't do that"): Promise<Attempt<R>> {
+  try {
+    return { ok: true, value: await fn() };
+  } catch (e) {
+    if (e instanceof ActionError) { Alert.alert(title, e.message); return { ok: false }; }
+    throw e;
+  }
+}

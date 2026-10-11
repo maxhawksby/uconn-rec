@@ -13,7 +13,7 @@ import type { MeetupFilter, MeetupSection } from '../meetups/logic';
 import { useNow } from '../meetups/useNow';
 
 export function MeetupsScreen({ navigation }: TabScreenProps<'Meetups'>) {
-  const { state, actions, ready, storageError } = useStore();
+  const { state, actions, ready, syncError } = useStore();
   const me = useMe();
   const now = useNow();
   const [filter, setFilter] = useState<MeetupFilter>('all');
@@ -41,10 +41,10 @@ export function MeetupsScreen({ navigation }: TabScreenProps<'Meetups'>) {
             label={f === 'going' && goingCount ? `${FILTER_LABEL[f]} ${goingCount}` : FILTER_LABEL[f]} />
         ))}
       </ScrollView>
-      {storageError ? (
+      {syncError ? (
         <View style={styles.notice}>
           <Icon name="alert-circle-outline" size={16} color="danger" />
-          <Text variant="small" color="danger" style={styles.flex}>{storageError}</Text>
+          <Text variant="small" color="danger" style={styles.flex}>{syncError}</Text>
         </View>
       ) : null}
     </View>

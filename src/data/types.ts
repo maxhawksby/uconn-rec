@@ -21,7 +21,7 @@ export type Student = {
   id: ID;
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string; // only known for the signed-in student
   schoolId: ID;
   classYear: ClassYear;
   interests: ID[]; // activity ids from src/data/activities.ts

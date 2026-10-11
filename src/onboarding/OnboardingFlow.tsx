@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BackHandler, Keyboard, StyleSheet } from 'react-native';
-import { useStore } from '../data/store';
-import { groupsForSchool, suggestedStudentsFor, waitlistStatus } from '../data/selectors';
+import { ActionError, useStore } from '../data/store';
+import { groupsForSchool, suggestedStudentsFor } from '../data/selectors';
+import { SCHOOL_BY_ID } from '../data/schools';
+import type { WaitlistStatus } from '../data/store';
 import type { ClassYear, School } from '../data/types';
 import { KeyboardFrame, attempt } from '../ui';
+import { attemptAsync } from '../ui/attempt';
 import { colors } from '../theme';
 import { Welcome } from './Welcome';
 import { SchoolStep } from './SchoolStep';
@@ -14,6 +17,7 @@ import { Waitlist } from './Waitlist';
 // School-first sign-up. Pilot path: school -> email -> code -> profile -> interests -> people,
 // then completeProfile signs the student in and the root navigator swaps to the Feed.
 // Any other school: school -> email -> waitlist, which is where the flow ends.
+// A student who verified but closed the app before finishing resumes at the profile step.
 
 type Step = 'welcome' | 'school' | 'email' | 'code' | 'profile' | 'interests' | 'people' | 'waitlist';
 
@@ -24,14 +28,21 @@ const BACK: Partial<Record<Step, Step>> = {
   school: 'welcome', email: 'school', code: 'email', profile: 'code', interests: 'profile', people: 'interests', waitlist: 'school',
 };
 
+// Local development: where the Supabase test inbox catches sign-up emails (set by npm start).
+const DEV_INBOX = __DEV__ ? process.env.EXPO_PUBLIC_DEV_INBOX_URL : undefined;
+
 export function OnboardingFlow() {
-  const { state, actions } = useStore();
-  const [step, setStep] = useState<Step>('welcome');
+  const { state, actions, verifiedSignup } = useStore();
+  const resume = verifiedSignup ? SCHOOL_BY_ID[verifiedSignup.schoolId] ?? null : null;
+  const [step, setStep] = useState<Step>(resume ? 'profile' : 'welcome');
   const [query, setQuery] = useState('');
-  const [school, setSchool] = useState<School | null>(null);
-  const [email, setEmail] = useState('');
+  const [school, setSchool] = useState<School | null>(resume);
+  const [email, setEmail] = useState(resume ? verifiedSignup!.email : '');
   const [demoCode, setDemoCode] = useState('');
-  const [verified, setVerified] = useState(false);
+  const [sendCount, setSendCount] = useState(0);
+  const [verifiedCode, setVerifiedCode] = useState(resume ? '------' : '');
+  const [busy, setBusy] = useState(false);
+  const [waitlist, setWaitlist] = useState<WaitlistStatus | null>(null);
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [year, setYear] = useState<ClassYear | null>(null);
@@ -57,36 +68,49 @@ export function OnboardingFlow() {
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pickSchool(s: School) {
-    if (s.id !== school?.id) { setVerified(false); setDemoCode(''); }
+    if (s.id !== school?.id) { setVerifiedCode(''); setDemoCode(''); }
     setSchool(s);
     go('email');
   }
 
-  function sendCode() {
+  async function sendCode() {
     if (!school) return;
-    const r = attempt(() => actions.startSignup({ email, schoolId: school.id }), "Couldn't send a code");
-    if (r.ok) { setDemoCode(r.value.code); setVerified(false); go('code'); }
+    const r = await attemptAsync(() => actions.startSignup({ email, schoolId: school.id }), "Couldn't send a code");
+    if (r.ok) { setDemoCode(r.value.demoCode ?? ''); setVerifiedCode(''); setSendCount(n => n + 1); go('code'); }
   }
 
-  function submitEmail() {
-    if (!school) return;
-    if (school.isPilot) return sendCode();
-    if (attempt(() => actions.joinWaitlist({ email, schoolId: school.id }), "Couldn't join the waitlist").ok) go('waitlist');
+  async function submitEmail() {
+    if (!school || busy) return;
+    setBusy(true);
+    if (school.isPilot) await sendCode();
+    else {
+      const r = await attemptAsync(() => actions.joinWaitlist({ email, schoolId: school.id }), "Couldn't join the waitlist");
+      if (r.ok) { setWaitlist(r.value); go('waitlist'); }
+    }
+    setBusy(false);
   }
 
-  function verify(code: string) {
-    // The demo code is on screen, so a mismatch is shown inline instead of as an alert.
-    if (code !== demoCode) return false;
-    if (attempt(() => actions.verifyCode(code), "Couldn't verify").ok) { setVerified(true); go('profile'); }
-    return true;
+  /** Returns an inline error for the code boxes, or null once verified. */
+  async function verify(code: string) {
+    try {
+      await actions.verifyCode(code);
+    } catch (e) {
+      if (e instanceof ActionError) return demoCode ? "That code doesn't match. Check the demo code above." : e.message;
+      throw e;
+    }
+    setVerifiedCode(code);
+    go('profile');
+    return null;
   }
 
-  function finish() {
-    if (!year) return;
-    const r = attempt(() => actions.completeProfile({ firstName: first, lastName: last, classYear: year, interests }), "Couldn't create your account");
+  async function finish() {
+    if (!year || busy) return;
+    setBusy(true);
+    const r = await attemptAsync(() => actions.completeProfile({ firstName: first, lastName: last, classYear: year, interests }), "Couldn't create your account");
+    setBusy(false);
     if (!r.ok) return;
-    // completeProfile signs in synchronously, so these run as the new student. The navigator
-    // then swaps onboarding for the tabs, landing on the Feed.
+    // The account exists now, so these run as the new student. The navigator then swaps
+    // onboarding for the tabs, landing on the Feed.
     following.forEach(id => attempt(() => actions.follow(id)));
     joined.forEach(id => attempt(() => actions.joinGroup(id)));
   }
@@ -108,11 +132,11 @@ export function OnboardingFlow() {
       case 'email':
         return school ? (
           <EmailStep school={school} email={email} onEmail={setEmail} progress={progress} onBack={back} onSubmit={submitEmail}
-            onSwitchSchool={s => { setSchool(s); setVerified(false); }} />
+            busy={busy} onSwitchSchool={s => { setSchool(s); setVerifiedCode(''); }} />
         ) : null;
       case 'code':
-        return <CodeStep email={email.trim().toLowerCase()} demoCode={demoCode} verified={verified} progress={progress}
-          onBack={back} onResend={sendCode} onVerify={verify} onNext={() => go('profile')} />;
+        return <CodeStep email={email.trim().toLowerCase()} demoCode={demoCode} inboxUrl={DEV_INBOX} verifiedCode={verifiedCode} sendCount={sendCount}
+          progress={progress} onBack={back} onResend={sendCode} onVerify={verify} onNext={() => go('profile')} />;
       case 'profile':
         return school ? (
           <ProfileStep school={school} first={first} last={last} year={year} progress={progress} onBack={back} onNext={() => go('interests')}
@@ -124,11 +148,11 @@ export function OnboardingFlow() {
         return school ? (
           <PeopleStep school={school} people={people} groups={groups} following={following} joined={joined}
             onToggleFollow={id => setFollowing(cur => toggle(cur, id))} onToggleJoin={id => setJoined(cur => toggle(cur, id))}
-            progress={progress} onBack={back} onFinish={finish} />
+            progress={progress} onBack={back} onFinish={finish} busy={busy} />
         ) : null;
       case 'waitlist':
-        return school ? (
-          <Waitlist school={school} email={email.trim().toLowerCase()} status={waitlistStatus(state, school.id, email)}
+        return school && waitlist ? (
+          <Waitlist school={school} email={email.trim().toLowerCase()} status={waitlist}
             onStartOver={() => { setSchool(null); setEmail(''); setQuery(''); go('school'); }} />
         ) : null;
     }

@@ -15,7 +15,7 @@ const PREVIEW_PRS = 5;
 const PREVIEW_HISTORY = 8;
 
 export function ProfileScreen({ navigation }: TabScreenProps<'Profile'>) {
-  const { state, actions } = useStore();
+  const { state, actions, backend } = useStore();
   const me = useMe();
   const [editing, setEditing] = useState(false);
   const [allPrs, setAllPrs] = useState(false);
@@ -80,7 +80,9 @@ export function ProfileScreen({ navigation }: TabScreenProps<'Profile'>) {
       <SectionHeader title="Settings" />
       <ListCard>
         <SettingsRow icon="people-outline" label="Your groups" detail={`${myGroups(state, me.id).length} joined`} onPress={() => navigation.navigate('Groups')} />
-        <SettingsRow icon="refresh-outline" label="Reset demo data" detail="Erase this device and reload the demo campus" danger onPress={confirmReset} />
+        {backend === 'demo' ? (
+          <SettingsRow icon="refresh-outline" label="Reset demo data" detail="Erase this device and reload the demo campus" danger onPress={confirmReset} />
+        ) : null}
         <SettingsRow icon="log-out-outline" label="Sign out" onPress={confirmSignOut} last />
       </ListCard>
       <Text variant="tiny" color="faint" center style={styles.footnote}>Valence is independent and not affiliated with any school.</Text>

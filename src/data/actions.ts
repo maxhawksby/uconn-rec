@@ -47,7 +47,7 @@ export function verifyCode(state: AppState, code: string): Result {
 
 export type ProfileInput = { firstName: string; lastName: string; classYear: ClassYear; interests: ID[]; bio?: string };
 
-function checkProfile(p: ProfileInput) {
+export function checkProfile(p: ProfileInput) {
   cleanText(p.firstName, 40, 'First name');
   cleanText(p.lastName, 40, 'Last name');
   if (!CLASS_YEARS.includes(p.classYear)) fail('Pick your class year.');

@@ -46,9 +46,11 @@ create table public.students (
 );
 create index on public.students (school_id);
 
+-- Before the profile exists (sign-up's "find your people" step), the verified email decides.
 create function private.my_school() returns text
 language sql stable security definer set search_path = '' as $$
-  select school_id from public.students where id = auth.uid()
+  select coalesce((select school_id from public.students where id = auth.uid()),
+    (select s.id from public.schools s where s.is_pilot and s.id = private.school_for_email(auth.jwt() ->> 'email')))
 $$;
 
 create function private.same_school(other uuid) returns boolean
@@ -60,6 +62,8 @@ $$;
 create function private.students_set_school() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  -- Admin tools (the demo seed) run as service_role and set the school themselves.
+  if auth.role() = 'service_role' then return new; end if;
   if tg_op = 'INSERT' then
     new.school_id := private.school_for_email(auth.jwt() ->> 'email');
     if new.school_id is null or not exists (select 1 from public.schools where id = new.school_id and is_pilot) then
@@ -459,7 +463,7 @@ revoke all on public.waitlist from anon, authenticated;
 
 alter publication supabase_realtime add table
   public.students, public.follows, public.groups, public.group_members, public.group_messages,
-  public.workouts, public.workout_tags, public.workout_photos, public.kudos, public.comments,
+  public.workouts, public.workout_notes, public.workout_tags, public.workout_photos, public.kudos, public.comments,
   public.meetups, public.meetup_attendees;
 
 -- ---------- Photo storage ----------
