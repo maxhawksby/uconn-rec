@@ -26,6 +26,7 @@
     "@expo/ngrok": "^4.1.3",
     "@types/react": "~19.2.2",
     "qrcode": "^1.5.4",
+    "supabase": "^2.120.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -36,7 +37,12 @@
     "web": "node scripts/dev.mjs --web",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web",
-    "test": "node scripts/test-model.cjs && node scripts/test-record.cjs"
+    "test": "node scripts/test-model.cjs && node scripts/test-record.cjs",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "test:db": "supabase test db",
+    "gen:schools": "node scripts/gen-schools-sql.cjs"
   },
   "private": true
 }
