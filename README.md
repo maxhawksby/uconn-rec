@@ -46,7 +46,7 @@ npm run test:db        # database privacy rules, acting as different students (S
   - `store.tsx` - the store contract and its demo backend (local, fictional data)
   - `remoteStore.tsx` and `remote.ts` - the Supabase backend: instant updates, server writes, live sync
   - `demo.ts` - fictional seed campus
-- `supabase/` - database schema and privacy rules (`migrations/`), their tests (`tests/`) and local config. The schools migration is generated from `schools.ts` with `npm run gen:schools`.
+- `supabase/` - database schema and privacy rules (`migrations/`), their tests (`tests/`) and local config. The schools and majors migrations are generated from `schools.ts` and `majors.ts` with `npm run gen:catalog`.
 - `src/ui/` - shared primitives. `src/theme.ts` - design tokens.
 
 ## Status

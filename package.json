@@ -45,8 +45,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "test:db": "supabase test db",
-    "gen:schools": "node scripts/gen-schools-sql.cjs",
-    "db:seed": "node scripts/seed-local.cjs"
+    "db:seed": "node scripts/seed-local.cjs",
+    "gen:catalog": "node scripts/gen-catalog-sql.cjs"
   },
   "private": true
 }

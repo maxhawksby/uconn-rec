@@ -6,7 +6,8 @@ select plan(1);
 select set_eq(
   $$ select tablename::text from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' $$,
   array['students', 'follows', 'workouts', 'workout_notes', 'workout_tags', 'workout_photos', 'kudos', 'comments',
-        'meetups', 'meetup_attendees', 'groups', 'group_members', 'group_messages'],
+        'meetups', 'meetup_attendees', 'groups', 'group_members', 'group_messages',
+        'orgs', 'student_badges', 'awards', 'student_awards'],
   'every table the app listens to publishes live changes');
 select * from finish();
 rollback;
