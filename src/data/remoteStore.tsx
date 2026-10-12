@@ -33,6 +33,7 @@ function friendly(e: unknown) {
   if (err?.code === 'P0001' && err.message) return err.message; // our own raise exception messages
   if (err?.code === '23505') return 'That already exists.';
   if (err?.code === '42501') return "You don't have permission to do that.";
+  if (err?.code === '23503') return 'Your sign-in has expired. Start again with your school email.';
   return "Couldn't reach Valence. Check your connection and try again.";
 }
 
@@ -91,6 +92,15 @@ export function RemoteStoreProvider({ db, children }: { db: SupabaseClient; chil
 
   const startSession = useCallback(async (u: User) => {
     user.current = u;
+    // A saved login can outlive its account (deleted on another phone, or a reset dev
+    // database). Ask the server first; if the account is gone, sign out on this phone
+    // rather than resume sign-up with a login that can't save anything. Offline: carry on.
+    const { error: lost } = await db.auth.getUser();
+    if (lost && (lost.status === 401 || lost.status === 403 || lost.status === 404)) {
+      user.current = null;
+      await db.auth.signOut({ scope: 'local' }).catch(() => undefined); // fires SIGNED_OUT, which ends the session
+      return;
+    }
     try {
       const all = await load(db, ALL_SLICES);
       const hasProfile = !!all.students?.some(s => s.id === u.id);
