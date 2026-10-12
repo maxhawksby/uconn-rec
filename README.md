@@ -51,4 +51,4 @@ npm run test:db        # database privacy rules, acting as different students (S
 
 ## Status
 
-Milestone 2 (in progress): real accounts with emailed codes, and the feed, follows, kudos, comments, meetups, groups and chat sync live between phones. The server enforces every privacy rule. Still to come: tagging friends on any workout, and workout photos (the database side is built).
+Milestone 2 (in progress): real accounts with emailed codes, and the feed, follows, kudos, comments, meetups, groups and chat sync live between phones. Tag the friends you trained with on any workout; once they accept, the post shows both names, lands on their profile, and everyone tagged can add photos (stored privately in Supabase Storage). The server enforces every privacy rule. Seeded students to try it as: `jordan.reyes@uconn.edu` has a tag request waiting from Kayla.

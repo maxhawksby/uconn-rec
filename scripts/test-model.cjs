@@ -11,7 +11,7 @@ function load(file) {
 }
 const S = load('src/data/selectors.ts'); const A = load('src/data/actions.ts'); const D = load('src/data/demo.ts');
 const schools = load('src/data/schools.ts'); const acts = load('src/data/activities.ts');
-const M = load('src/meetups/logic.ts');
+const M = load('src/meetups/logic.ts'); const MIG = load('src/data/migrate.ts');
 let count = 0; function check(name, fn) { fn(); count++; console.log('PASS', name); }
 
 const NOW = new Date(2026, 9, 9, 18, 0); // Fri Oct 9 2026, 6pm local
@@ -223,5 +223,90 @@ check('Meetup picker: titles, times, slots and validation', () => {
   assert.deepEqual({ ...M.validateMeetupForm(ok, NOW) }, {});
   const bad = M.validateMeetupForm({ activityId: null, title: ' ', location: '', startsAt: new Date(2026, 9, 9, 17), capacity: 1 }, NOW);
   assert.deepEqual(Object.keys(bad).sort(), ['activity', 'capacity', 'location', 'title', 'when']);
+});
+
+// ---------- Training partners and photos ----------
+const lift = { kind: 'lift', title: 'Push day', startedAt: NOW.toISOString(), durationSec: 3600, visibility: 'friends', exercises: [{ name: 'Bench press', sets: [{ reps: 5, weight: 185 }] }] };
+const as = (s, id) => ({ ...s, meId: id });
+check('Tagging at post: pending tags, no self-tags, campus only', () => {
+  let s = signedIn(); const me = s.meId;
+  const r = A.logWorkout(s, { ...lift, tagIds: ['jordan', 'jordan', 'kayla'] }, ctx); s = r.state;
+  assert.deepEqual([...S.tagsFor(s, r.result.workoutId).map(t => `${t.studentId}:${t.status}`)], ['jordan:pending', 'kayla:pending']);
+  assert.ok(!('tagIds' in s.workouts[0]), 'tagIds is not stored on the workout');
+  assert.throws(() => A.logWorkout(s, { ...lift, tagIds: [me] }, ctx), /yourself/);
+  const away = { ...D.makeDemoState(NOW).students[0], id: 'yalie', schoolId: 'yale' };
+  assert.throws(() => A.logWorkout({ ...s, students: [...s.students, away] }, { ...lift, tagIds: ['yalie'] }, ctx), /classmates/);
+});
+check('Pending tags: the tagged student sees it (even private) but answers before it hits their feed', () => {
+  let s = signedIn(); const me = s.meId;
+  const { state, result } = A.logWorkout(s, { ...lift, visibility: 'private', tagIds: ['jordan'] }, ctx); s = state;
+  const w = s.workouts.find(x => x.id === result.workoutId);
+  assert.ok(S.canSee(s, 'jordan', w)); assert.ok(!S.canSee(s, 'kayla', w));
+  assert.ok(!S.feed(s, 'jordan').some(i => i.workout.id === w.id), 'pending stays out of the feed');
+  assert.ok(S.pendingTags(s, 'jordan').some(p => p.workout.id === w.id));
+  assert.ok(!S.canAddPhotos(s, 'jordan', w), 'pending cannot add photos');
+  const accepted = A.respondToTag(as(s, 'jordan'), { workoutId: w.id, accept: true }).state;
+  assert.ok(!S.pendingTags(accepted, 'jordan').some(p => p.workout.id === w.id));
+  assert.ok(S.workoutsFor(accepted, 'jordan', 'jordan').some(x => x.id === w.id), 'accepted joins their profile');
+  const item = S.feed(accepted, 'jordan').find(i => i.workout.id === w.id);
+  assert.deepEqual([...item.tagged.map(t => t.id)], ['jordan']);
+  assert.equal(item.workout.note, undefined);
+  const declined = A.respondToTag(as(s, 'jordan'), { workoutId: w.id, accept: false }).state;
+  assert.ok(!S.canSee(declined, 'jordan', w), 'declining hides a private workout again');
+  assert.throws(() => A.respondToTag(as(s, 'kayla'), { workoutId: w.id, accept: true }), /gone/);
+  assert.equal(S.workoutsFor(accepted, me, me).length, S.workoutsFor(s, me, me).length);
+});
+check("Followers of a training partner see the shared workout; it doesn't count toward the partner's stats", () => {
+  const s = D.makeDemoState(NOW);
+  const legs = s.workouts.find(w => w.id === 'w-shared-legs');
+  const fanOfJordan = s.follows.find(f => f.followeeId === 'jordan' && f.followerId !== 'marcus' && !S.isFollowing(s, f.followerId, 'marcus')).followerId;
+  assert.ok(S.feed(s, fanOfJordan).some(i => i.workout.id === legs.id));
+  assert.ok(!S.profileStats(s, 'jordan', NOW).prs.some(pr => pr.workoutId === legs.id), "Marcus's sets aren't Jordan's PRs");
+});
+check('Owners tag more friends later; tags can be removed by the owner or the tagged student', () => {
+  let s = signedIn(); const me = s.meId;
+  const { state, result: { workoutId } } = A.logWorkout(s, lift, ctx); s = state;
+  s = A.tagFriends(s, { workoutId, studentIds: ['jordan', 'kayla'] }, ctx).state;
+  s = A.tagFriends(s, { workoutId, studentIds: ['jordan'] }, ctx).state; // no duplicate
+  assert.equal(S.tagsFor(s, workoutId).length, 2);
+  assert.throws(() => A.tagFriends(as(s, 'jordan'), { workoutId, studentIds: ['kayla'] }, ctx), /owner/);
+  assert.throws(() => A.removeTag(as(s, 'jordan'), { workoutId, studentId: 'kayla' }), /owner/);
+  s = A.removeTag(as(s, 'jordan'), { workoutId, studentId: 'jordan' }).state;
+  s = A.removeTag(as(s, me), { workoutId, studentId: 'kayla' }).state;
+  assert.equal(S.tagsFor(s, workoutId).length, 0);
+});
+check('Photos: owner and accepted partners add, up to 10; uploader or owner removes; delete cleans up', () => {
+  let s = signedIn(); const me = s.meId;
+  const { state, result: { workoutId } } = A.logWorkout(s, { ...lift, tagIds: ['jordan'] }, ctx); s = state;
+  assert.throws(() => A.addPhoto(as(s, 'kayla'), { workoutId, uri: 'file:a' }, ctx), /Accept/);
+  s = A.respondToTag(as(s, 'jordan'), { workoutId, accept: true }).state;
+  const j = A.addPhoto(as(s, 'jordan'), { workoutId, uri: 'file:j' }, ctx); s = j.state;
+  for (let i = 0; i < 9; i++) s = A.addPhoto(as(s, me), { workoutId, uri: `file:${i}` }, ctx).state;
+  assert.throws(() => A.addPhoto(as(s, me), { workoutId, uri: 'file:x' }, ctx), /up to 10/);
+  const mine = S.photosFor(s, workoutId).find(p => p.studentId === me);
+  assert.throws(() => A.removePhoto(as(s, 'jordan'), mine.id), /owner/);
+  s = A.removePhoto(as(s, me), j.result.photoId).state; // the owner can remove a partner's photo
+  s = A.deleteWorkout(as(s, me), workoutId).state;
+  assert.equal(s.tags.filter(t => t.workoutId === workoutId).length + s.photos.filter(p => p.workoutId === workoutId).length, 0);
+});
+check('Demo campus has shared workouts with photos and a pending request for Jordan', () => {
+  const s = D.makeDemoState(NOW);
+  const fs = require('fs');
+  assert.ok(s.photos.length >= 4 && s.photos.every(p => fs.existsSync(`assets/demo-photos/${p.uri.slice(5)}.jpg`)));
+  assert.equal(S.pendingTags(s, 'jordan')[0].workout.id, 'w-shared-bench');
+  assert.ok(s.tags.every(t => S.studentById(s, t.studentId) && s.workouts.some(w => w.id === t.workoutId)));
+  assert.ok(s.photos.every(p => S.canAddPhotos(s, p.studentId, s.workouts.find(w => w.id === p.workoutId))), 'demo photos follow the rules');
+});
+check('Saved v1 demo data upgrades: "played with" becomes accepted tags', () => {
+  const v1 = { version: 1, workouts: [{ id: 'g', kind: 'sport', withIds: ['a', 'b'], startedAt: 'T' }, { id: 'l', kind: 'lift' }] };
+  const v2 = MIG.migrate(v1);
+  assert.equal(v2.version, 2); assert.equal(v2.photos.length, 0);
+  assert.deepEqual([...v2.tags.map(t => `${t.workoutId}:${t.studentId}:${t.status}`)], ['g:a:accepted', 'g:b:accepted']);
+  assert.ok(!('withIds' in v2.workouts[0]));
+  assert.equal(MIG.migrate({ version: 2, x: 1 }).x, 1);
+});
+check('Relative times round down (38 hours ago is 1d)', () => {
+  const ago = mins => new Date(NOW.getTime() - mins * 60000).toISOString();
+  assert.deepEqual([0, 5, 59, 119, 38 * 60, 6 * 1440 + 1000].map(m => S.relativeTime(ago(m), NOW)), ['now', '5m', '59m', '1h', '1d', '6d']);
 });
 console.log(`${count} model checks passed.`);

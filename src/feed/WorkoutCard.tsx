@@ -8,7 +8,8 @@ import { Avatar, Card, Icon, SchoolBadge, Scoreboard, Text } from '../ui';
 import { colors, hitSlop, minTouch, radius, space } from '../theme';
 import { KudosButton } from './KudosButton';
 import { RouteSketch } from './RouteSketch';
-import { AvatarStack } from './AvatarStack';
+import { CrewAvatar, crewTitle } from './tags';
+import { CardPhoto } from './photos';
 import { workoutStats } from './stats';
 import { VISIBILITY_LABEL, bestSet, formatSet, fullName, plural } from './model';
 
@@ -30,21 +31,25 @@ export function activityLabel(w: Workout) {
   }
 }
 
-/** Author line used by the card and the detail screen. Tapping it opens the profile. */
-export function AuthorRow({ author, workout, now, size = 40 }: { author: Student; workout: Workout; now: Date; size?: number }) {
+/**
+ * Author line used by the card and the detail screen. A shared workout names the whole crew
+ * ("Caleb Mensah & Hannah Weiss"). Tapping it opens the author's profile.
+ */
+export function AuthorRow({ author, tagged = [], workout, now, size = 40 }: { author: Student; tagged?: Student[]; workout: Workout; now: Date; size?: number }) {
   const navigation = useNavigation();
   const vis = VISIBILITY_LABEL[workout.visibility];
+  const name = crewTitle(author, tagged);
   return (
     <View style={styles.authorRow}>
       <Pressable
         onPress={() => navigation.navigate('StudentProfile', { studentId: author.id })}
         hitSlop={hitSlop}
         accessibilityRole="link"
-        accessibilityLabel={`${fullName(author)}, open profile`}
+        accessibilityLabel={`${name}, open ${author.firstName}'s profile`}
         style={({ pressed }) => [styles.author, pressed && styles.pressed]}>
-        <Avatar student={author} size={size} />
+        <CrewAvatar author={author} tagged={tagged} size={size} />
         <View style={styles.authorText}>
-          <Text variant="bodyStrong" numberOfLines={1}>{fullName(author)}</Text>
+          <Text variant="bodyStrong" numberOfLines={1}>{name}</Text>
           <View style={styles.meta}>
             <SchoolBadge schoolId={author.schoolId} />
             <Text variant="tiny" color="muted" numberOfLines={1} style={styles.flexShrink}>
@@ -96,20 +101,10 @@ function DistanceBody({ workout }: { workout: Extract<Workout, { kind: 'run' | '
   );
 }
 
-function SportBody({ workout, state }: { workout: Extract<Workout, { kind: 'sport' }>; state: AppState }) {
-  const mates = workout.withIds.map(id => studentById(state, id)).filter((s): s is Student => !!s);
-  const names = mates.slice(0, 2).map(s => s.firstName).join(', ') + (mates.length > 2 ? ` +${mates.length - 2}` : '');
+function SportBody({ workout }: { workout: Extract<Workout, { kind: 'sport' }> }) {
   return (
     <View style={styles.bodyGap}>
       <Scoreboard compact stats={workoutStats(workout)} />
-      {mates.length ? (
-        <View style={styles.playedWith} accessible accessibilityLabel={`Played with ${mates.map(fullName).join(', ')}`}>
-          <AvatarStack students={mates} size={26} />
-          <Text variant="small" color="inkSoft" numberOfLines={1} style={styles.flexShrink}>
-            with <Text variant="smallStrong">{names}</Text>
-          </Text>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -130,12 +125,12 @@ function SessionBody({ workout }: { workout: Workout }) {
   );
 }
 
-export function WorkoutBody({ workout, state }: { workout: Workout; state: AppState }) {
+export function WorkoutBody({ workout }: { workout: Workout }) {
   switch (workout.kind) {
     case 'lift': return <LiftBody workout={workout} />;
     case 'run':
     case 'ride': return <DistanceBody workout={workout} />;
-    case 'sport': return <SportBody workout={workout} state={state} />;
+    case 'sport': return <SportBody workout={workout} />;
     default: return <SessionBody workout={workout} />;
   }
 }
@@ -145,16 +140,17 @@ type Props = { item: FeedItem; state: AppState; now: Date };
 /** A feed card: author, the workout by kind, then kudos and the latest comment. */
 export const WorkoutCard = memo(function WorkoutCard({ item, state, now }: Props) {
   const navigation = useNavigation();
-  const { workout: w, author, comments, kudosCount, kudoedByMe, isMine } = item;
+  const { workout: w, author, tagged, photos, comments, kudosCount, kudoedByMe, isMine } = item;
   const open = () => navigation.navigate('WorkoutDetail', { workoutId: w.id });
   const last = comments[comments.length - 1];
   const lastAuthor = last ? studentById(state, last.studentId) : undefined;
 
   return (
-    <Card onPress={open} accessibilityLabel={`${w.title} by ${fullName(author)}. Open workout`} style={styles.card}>
-      <AuthorRow author={author} workout={w} now={now} />
+    <Card onPress={open} accessibilityLabel={`${w.title} by ${crewTitle(author, tagged)}. Open workout`} style={styles.card}>
+      <AuthorRow author={author} tagged={tagged} workout={w} now={now} />
       <Text variant="h2" numberOfLines={2} style={styles.title}>{w.title}</Text>
-      <WorkoutBody workout={w} state={state} />
+      <CardPhoto photos={photos} />
+      <WorkoutBody workout={w} />
 
       <View style={styles.footer}>
         <KudosButton workoutId={w.id} given={kudoedByMe} count={kudosCount} isMine={isMine} />
@@ -192,7 +188,6 @@ const styles = StyleSheet.create({
   exercises: { gap: space.xs },
   exerciseRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: space.md },
   tabular: { fontVariant: ['tabular-nums'] },
-  playedWith: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   session: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg },
   sessionIcon: { width: minTouch, height: minTouch, borderRadius: radius.md, backgroundColor: colors.sunken, alignItems: 'center', justifyContent: 'center' },
   sessionStat: { flexDirection: 'row', alignItems: 'baseline', gap: space.xs },

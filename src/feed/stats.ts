@@ -20,7 +20,7 @@ export function workoutStats(w: Workout): Stat[] {
     case 'ride':
       return [{ label: 'Distance', value: miles(w.distanceKm), unit: 'mi' }, { label: 'Speed', value: mph(w.durationSec, w.distanceKm), unit: 'mph' }, time];
     case 'sport':
-      return [time, ...(w.result ? [{ label: 'Result', value: w.result }] : []), ...(w.withIds.length ? [{ label: 'Players', value: String(w.withIds.length + 1) }] : [])];
+      return [time, ...(w.result ? [{ label: 'Result', value: w.result }] : [])];
     default:
       return [time];
   }

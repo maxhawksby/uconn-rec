@@ -3,7 +3,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { colors, gutter, minTouch, radius, space } from '../theme';
 import { Button, Icon, Input, KeyboardFrame, Scoreboard, Text } from '../ui';
-import type { Visibility, WorkoutKind } from '../data/types';
+import type { ID, Student, Visibility, WorkoutKind } from '../data/types';
+import { TagPicker } from '../feed/tags';
 import { suggestTitle } from './math';
 import { setLabel } from './lift';
 import { IconButton, SectionLabel } from './parts';
@@ -22,14 +23,18 @@ type Props = {
   posting?: boolean;
   /** Back to the workout (it keeps its state). */
   onCancel: () => void;
-  onPost: (input: { title: string; note: string; visibility: Visibility }) => void;
+  onPost: (input: { title: string; note: string; visibility: Visibility; tagIds: ID[] }) => void;
+  /** Classmates you can tag: people you follow first. */
+  candidates: Student[];
+  followingCount: number;
 };
 
-/** Last step for every kind: summary, title, private note, visibility, post. */
-export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
+/** Last step for every kind: summary, title, who you trained with, private note, visibility, post. */
+export function FinishSheet({ finished, posting, onCancel, onPost, candidates, followingCount }: Props) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('friends');
+  const [tagIds, setTagIds] = useState<ID[]>([]);
 
   // Fresh suggestion each time the sheet opens for a new workout.
   useEffect(() => {
@@ -37,7 +42,11 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
     setTitle(suggestTitle(finished.draft.kind, new Date(finished.draft.startedAt), finished.activityName));
     setNote('');
     setVisibility('friends');
-  }, [finished]);
+    setTagIds((finished.tagIds ?? []).filter(id => candidates.some(c => c.id === id)));
+  }, [finished]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleTag = (id: ID) => setTagIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
+  const isSport = finished?.draft.kind === 'sport';
 
   const prs = finished?.prs ?? [];
   const titleError = title.trim() ? '' : 'Give it a title.';
@@ -77,6 +86,12 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
               <Input value={title} onChangeText={setTitle} maxLength={80} selectTextOnFocus returnKeyType="next" error={titleError || undefined}
                 accessibilityLabel="Workout title" />
 
+              <SectionLabel right={tagIds.length ? <Text variant="smallStrong" color="accentText">{tagIds.length} tagged</Text> : <Text variant="tiny" color="muted">Optional</Text>}>
+                {isSport ? 'Played with' : 'Trained with'}
+              </SectionLabel>
+              <TagPicker candidates={candidates} followingCount={followingCount} selected={tagIds} onToggle={toggleTag} />
+              {tagIds.length ? <Text variant="tiny" color="muted" style={styles.tagHint}>They'll get a request. Once they accept, it's on their profile too.</Text> : null}
+
               <SectionLabel right={<View style={styles.lock}><Icon name="lock-closed" size={12} color="muted" /><Text variant="tiny" color="muted">Only you see this</Text></View>}>Private note</SectionLabel>
               <Input value={note} onChangeText={setNote} placeholder="How it felt, what to change next time" multiline maxLength={500}
                 style={styles.note} textAlignVertical="top" accessibilityLabel="Private note" />
@@ -97,7 +112,7 @@ export function FinishSheet({ finished, posting, onCancel, onPost }: Props) {
               </View>
             </ScrollView>
             <View style={styles.footer}>
-              <Button label="Post workout" block loading={posting} disabled={!!titleError} onPress={() => onPost({ title, note, visibility })} />
+              <Button label="Post workout" block loading={posting} disabled={!!titleError} onPress={() => onPost({ title, note, visibility, tagIds })} />
             </View>
           </KeyboardFrame>
         </SafeAreaView>
@@ -115,6 +130,7 @@ const styles = StyleSheet.create({
   prHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.xs },
   prRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   lock: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  tagHint: { marginTop: space.sm },
   note: { minHeight: 96, paddingTop: space.md },
   options: { flexDirection: 'row', gap: space.sm },
   option: { flex: 1, alignItems: 'center', gap: space.xs, paddingVertical: space.md, paddingHorizontal: space.sm, minHeight: minTouch * 2, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },

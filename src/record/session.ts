@@ -11,9 +11,10 @@ import type { ExerciseDraft, PRHit } from './lift';
 type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never;
 
 /** Everything a logger knows. The finish sheet adds title, note and visibility. */
-export type FinishDraft = DistributiveOmit<NewWorkout, 'title' | 'visibility' | 'note'>;
+export type FinishDraft = DistributiveOmit<NewWorkout, 'title' | 'visibility' | 'note' | 'tagIds'>;
 
-export type Finished = { draft: FinishDraft; stats: Stat[]; prs?: PRHit[]; activityName?: string };
+/** tagIds: training partners to preselect at Save (e.g. last game's teammates). */
+export type Finished = { draft: FinishDraft; stats: Stat[]; prs?: PRHit[]; activityName?: string; tagIds?: string[] };
 
 /** Asks before throwing away a workout in progress. */
 export function confirmDiscard(onDiscard: () => void, what = 'workout') {

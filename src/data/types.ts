@@ -49,15 +49,25 @@ type WorkoutBase = {
 
 export type LiftWorkout = WorkoutBase & { kind: 'lift'; exercises: LiftExercise[] };
 export type DistanceWorkout = WorkoutBase & { kind: 'run' | 'ride'; distanceKm: number; route?: RoutePoint[] };
-export type SportWorkout = WorkoutBase & { kind: 'sport'; activityId: ID; withIds: ID[]; result?: string };
+export type SportWorkout = WorkoutBase & { kind: 'sport'; activityId: ID; result?: string }; // who played: tags
 export type SessionWorkout = WorkoutBase & { kind: 'class' | 'other'; activityId: ID };
 
 export type Workout = LiftWorkout | DistanceWorkout | SportWorkout | SessionWorkout;
 export type WorkoutKind = Workout['kind'];
 
 // Input for logWorkout: the store assigns id and studentId. Distributes over the union.
+// tagIds: friends you trained with, who each get a tag to accept.
 type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never;
-export type NewWorkout = DistributiveOmit<Workout, 'id' | 'studentId'>;
+export type NewWorkout = DistributiveOmit<Workout, 'id' | 'studentId'> & { tagIds?: ID[] };
+
+// A friend tagged on a workout. Pending until they accept; accepted puts the workout on
+// their profile and lets them add photos. Declined hides it from them.
+export type TagStatus = 'pending' | 'accepted' | 'declined';
+export type WorkoutTag = { workoutId: ID; studentId: ID; status: TagStatus; at: ISODate };
+
+// uri: an https URL (server), a file the student picked, or `demo:<name>` for a bundled
+// demo photo (see src/feed/photoSource.ts).
+export type WorkoutPhoto = { id: ID; workoutId: ID; studentId: ID; uri: string; at: ISODate };
 
 export type Kudos = { workoutId: ID; studentId: ID; at: ISODate };
 export type Comment = { id: ID; workoutId: ID; studentId: ID; body: string; at: ISODate };
@@ -101,7 +111,7 @@ export type WaitlistEntry = { email: string; schoolId: ID; at: ISODate };
 export type PendingSignup = { email: string; schoolId: ID; code: string; verified: boolean; sentAt: ISODate };
 
 export type AppState = {
-  version: 1;
+  version: 2;
   meId: ID | null;
   pending: PendingSignup | null;
   students: Student[];
@@ -113,6 +123,8 @@ export type AppState = {
   groups: Group[];
   messages: GroupMessage[];
   waitlist: WaitlistEntry[];
+  tags: WorkoutTag[];
+  photos: WorkoutPhoto[];
 };
 
 // Derived, read-only shapes returned by selectors.
@@ -123,6 +135,8 @@ export type FeedItem = {
   kudoedByMe: boolean;
   comments: Comment[];
   isMine: boolean;
+  tagged: Student[]; // accepted training partners, shown beside the author
+  photos: WorkoutPhoto[];
 };
 
 export type WeeklyTotals = { sessions: number; activeSec: number; distanceKm: number; liftVolume: number; weekStart: ISODate };

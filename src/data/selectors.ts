@@ -1,4 +1,4 @@
-import type { AppState, FeedItem, ID, PersonalRecord, ProfileStats, School, Student, WeeklyTotals, Workout, Meetup, Group, GroupMessage } from './types';
+import type { AppState, FeedItem, ID, PersonalRecord, ProfileStats, School, Student, WeeklyTotals, Workout, WorkoutPhoto, WorkoutTag, Meetup, Group, GroupMessage } from './types';
 import { SCHOOLS, SCHOOL_BY_ID, PILOT_UNLOCK_AT } from './schools';
 
 // Pure read functions over AppState. No React, no storage: safe to unit test and to
@@ -94,8 +94,61 @@ function rankByInterests(students: Student[], interests: ID[], limit: number) {
 
 // ---------- Visibility and feed ----------
 
+// ---------- Tags and photos ----------
+
+/** Live tags on a workout (pending and accepted), oldest first. */
+export function tagsFor(state: AppState, workoutId: ID): WorkoutTag[] {
+  return state.tags.filter(t => t.workoutId === workoutId && t.status !== 'declined').sort((a, b) => a.at.localeCompare(b.at));
+}
+
+export function tagOf(state: AppState, workoutId: ID, studentId: ID): WorkoutTag | undefined {
+  return state.tags.find(t => t.workoutId === workoutId && t.studentId === studentId);
+}
+
+/** Accepted training partners, shown beside the author. */
+export function taggedStudents(state: AppState, workoutId: ID): Student[] {
+  return tagsFor(state, workoutId).filter(t => t.status === 'accepted')
+    .map(t => studentById(state, t.studentId)).filter((s): s is Student => !!s);
+}
+
+/** Tags waiting on this student's answer, newest first, with the workout and who tagged them. */
+export function pendingTags(state: AppState, studentId: ID) {
+  return state.tags.filter(t => t.studentId === studentId && t.status === 'pending')
+    .map(tag => {
+      const workout = state.workouts.find(w => w.id === tag.workoutId);
+      const author = workout ? studentById(state, workout.studentId) : undefined;
+      return workout && author ? { tag, workout, author } : null;
+    })
+    .filter((x): x is { tag: WorkoutTag; workout: Workout; author: Student } => !!x)
+    .sort((a, b) => b.tag.at.localeCompare(a.tag.at));
+}
+
+export function photosFor(state: AppState, workoutId: ID): WorkoutPhoto[] {
+  return state.photos.filter(p => p.workoutId === workoutId).sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** The owner and accepted training partners can add photos. */
+export function canAddPhotos(state: AppState, studentId: ID, workout: Workout) {
+  return workout.studentId === studentId || tagOf(state, workout.id, studentId)?.status === 'accepted';
+}
+
+/** Who you can tag: people you follow at your school first, then the rest of campus. */
+export function tagCandidates(state: AppState, studentId: ID): Student[] {
+  const me = studentById(state, studentId);
+  if (!me) return [];
+  const following = new Set(followingIds(state, studentId));
+  const byName = (a: Student, b: Student) => a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName);
+  const campus = state.students.filter(s => s.id !== studentId && s.schoolId === me.schoolId);
+  return [...campus.filter(s => following.has(s.id)).sort(byName), ...campus.filter(s => !following.has(s.id)).sort(byName)];
+}
+
+/** Up to this many photos per workout. */
+export const MAX_PHOTOS = 10;
+
 export function canSee(state: AppState, viewerId: ID, workout: Workout) {
   if (workout.studentId === viewerId) return true;
+  const tag = tagOf(state, workout.id, viewerId);
+  if (tag && tag.status !== 'declined') return true; // tagged friends see it, even if private
   if (workout.visibility === 'private') return false;
   const follows = isFollowing(state, viewerId, workout.studentId);
   if (workout.visibility === 'friends') return follows;
@@ -126,25 +179,40 @@ export function toFeedItem(state: AppState, workout: Workout, viewerId: ID): Fee
     kudoedByMe: kudos.some(k => k.studentId === viewerId),
     comments: state.comments.filter(c => c.workoutId === workout.id).sort((a, b) => a.at.localeCompare(b.at)),
     isMine: workout.studentId === viewerId,
+    tagged: taggedStudents(state, workout.id),
+    photos: photosFor(state, workout.id),
   };
 }
 
-/** 'following' = you + people you follow. 'campus' = everything visible at your school. */
+/** Everyone a workout belongs to: the author plus accepted training partners. */
+function crewIds(state: AppState, w: Workout): ID[] {
+  return [w.studentId, ...tagsFor(state, w.id).filter(t => t.status === 'accepted').map(t => t.studentId)];
+}
+
+/**
+ * 'following' = you + people you follow, including workouts where one of them is an accepted
+ * training partner. 'campus' = everything visible at your school. Pending tags wait in the
+ * Feed's request card instead of the list.
+ */
 export function feed(state: AppState, viewerId: ID, scope: 'following' | 'campus' = 'following'): FeedItem[] {
   const following = new Set(followingIds(state, viewerId));
   const viewer = studentById(state, viewerId);
   return state.workouts
     .filter(w => canSee(state, viewerId, w))
-    .filter(w => scope === 'campus'
-      ? w.studentId === viewerId || studentById(state, w.studentId)?.schoolId === viewer?.schoolId || following.has(w.studentId)
-      : w.studentId === viewerId || following.has(w.studentId))
+    .filter(w => tagOf(state, w.id, viewerId)?.status !== 'pending')
+    .filter(w => {
+      const crew = crewIds(state, w);
+      if (crew.includes(viewerId) || crew.some(id => following.has(id))) return true;
+      return scope === 'campus' && studentById(state, w.studentId)?.schoolId === viewer?.schoolId;
+    })
     .sort(byNewest)
     .map(w => toFeedItem(state, w, viewerId))
     .filter((x): x is FeedItem => !!x);
 }
 
+/** A student's history: their workouts plus shared ones they accepted a tag on. */
 export function workoutsFor(state: AppState, studentId: ID, viewerId: ID): Workout[] {
-  return state.workouts.filter(w => w.studentId === studentId && canSee(state, viewerId, w)).sort(byNewest).map(w => forViewer(w, viewerId));
+  return state.workouts.filter(w => crewIds(state, w).includes(studentId) && canSee(state, viewerId, w)).sort(byNewest).map(w => forViewer(w, viewerId));
 }
 
 export function workoutById(state: AppState, id: ID, viewerId: ID): FeedItem | null {
@@ -330,8 +398,8 @@ export function relativeTime(iso: string, now: Date = new Date()) {
   const diff = Math.round((now.getTime() - new Date(iso).getTime()) / 60000);
   if (diff < 1) return 'now';
   if (diff < 60) return `${diff}m`;
-  if (diff < 24 * 60) return `${Math.round(diff / 60)}h`;
-  if (diff < 7 * 24 * 60) return `${Math.round(diff / 1440)}d`;
+  if (diff < 24 * 60) return `${Math.floor(diff / 60)}h`; // round down: 38 hours ago is "1d", not "2d"
+  if (diff < 7 * 24 * 60) return `${Math.floor(diff / 1440)}d`;
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 

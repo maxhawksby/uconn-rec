@@ -50,8 +50,15 @@ async function main() {
     exercises: w.kind === 'lift' ? w.exercises : null, distance_km: w.distanceKm ?? null, route: w.route ?? null,
     activity_id: w.activityId ?? null, result: w.result ?? null,
   }))));
-  const tags = demo.workouts.filter(w => w.kind === 'sport').flatMap(w => w.withIds.map(id => ({ workout_id: uuid(w.id), student_id: uuid(id), status: 'accepted' })));
-  if (tags.length) await must('tags', db.from('workout_tags').insert(tags));
+  await must('tags', db.from('workout_tags').insert(demo.tags.map(t => ({ workout_id: uuid(t.workoutId), student_id: uuid(t.studentId), status: t.status, created_at: t.at }))));
+  // Demo photos are bundled with the app (demo:<name>); upload each into private storage.
+  for (const p of demo.photos) {
+    const name = p.uri.replace(/^demo:/, '');
+    const path = `${uuid(p.workoutId)}/${uuid(p.id)}.jpg`;
+    const { error } = await db.storage.from('workout-photos').upload(path, fs.readFileSync(`assets/demo-photos/${name}.jpg`), { contentType: 'image/jpeg' });
+    if (error) throw new Error(`photo ${name}: ${error.message}`);
+    await must('photos', db.from('workout_photos').insert({ id: uuid(p.id), workout_id: uuid(p.workoutId), student_id: uuid(p.studentId), path, created_at: p.at }));
+  }
   await must('kudos', db.from('kudos').insert(demo.kudos.map(k => ({ workout_id: uuid(k.workoutId), student_id: uuid(k.studentId), created_at: k.at }))));
   await must('comments', db.from('comments').insert(demo.comments.map(c => ({ id: uuid(c.id), workout_id: uuid(c.workoutId), student_id: uuid(c.studentId), body: c.body, created_at: c.at }))));
   await must('meetups', db.from('meetups').insert(demo.meetups.map(m => ({
@@ -61,7 +68,7 @@ async function main() {
   await must('attendees', db.from('meetup_attendees').upsert(demo.meetups.flatMap(m => m.attendeeIds.map(a => ({ meetup_id: uuid(m.id), student_id: uuid(a) }))), { ignoreDuplicates: true }));
   await must('waitlist', db.from('waitlist').insert(demo.waitlist.map(w => ({ email: w.email, school_id: w.schoolId, created_at: w.at }))));
 
-  console.log(`Seeded ${demo.students.length} demo students, ${demo.workouts.length} workouts, ${demo.groups.length} groups, ${demo.meetups.length} meetups.`);
+  console.log(`Seeded ${demo.students.length} demo students, ${demo.workouts.length} workouts (${demo.tags.length} tags, ${demo.photos.length} photos), ${demo.groups.length} groups, ${demo.meetups.length} meetups.`);
   console.log(`Sign in as any of them, e.g. ${demo.students[0].email}. Codes arrive at ${local.MAILPIT_URL}`);
 }
 main().catch(e => { console.error(e.message); process.exitCode = 1; });

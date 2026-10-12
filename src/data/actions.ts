@@ -1,6 +1,6 @@
-import type { AppState, ClassYear, ID, NewGroup, NewMeetup, NewWorkout, Student, Workout } from './types';
+import type { AppState, ClassYear, ID, NewGroup, NewMeetup, NewWorkout, Student, Workout, WorkoutTag } from './types';
 import { CLASS_YEARS } from './types';
-import { normalizeEmail, signupGate, studentById } from './selectors';
+import { MAX_PHOTOS, canAddPhotos, normalizeEmail, signupGate, studentById, tagOf } from './selectors';
 
 // Pure state transitions. Each takes the current state and returns the next state plus an
 // optional result. The React store (store.tsx) wraps these; a Supabase repository will
@@ -101,11 +101,70 @@ function checkWorkout(w: NewWorkout) {
   if ((w.kind === 'run' || w.kind === 'ride') && !(w.distanceKm > 0 && w.distanceKm < 1000)) fail('Distance looks off.');
 }
 
+const MAX_TAGS = 15;
+
+/** Pending tags for classmates; skips anyone already tagged. */
+function newTags(state: AppState, me: Student, workoutId: ID, ids: ID[], at: string): WorkoutTag[] {
+  const fresh = [...new Set(ids)].filter(id => !tagOf(state, workoutId, id));
+  for (const id of fresh) {
+    if (id === me.id) fail("You can't tag yourself.");
+    if (studentById(state, id)?.schoolId !== me.schoolId) fail('You can only tag classmates at your school.');
+  }
+  if (state.tags.filter(t => t.workoutId === workoutId).length + fresh.length > MAX_TAGS) fail(`Tag up to ${MAX_TAGS} people.`);
+  return fresh.map(studentId => ({ workoutId, studentId, status: 'pending' as const, at }));
+}
+
 export function logWorkout(state: AppState, input: NewWorkout, ctx: Ctx): Result<{ workoutId: ID }> {
   const me = requireMe(state);
   checkWorkout(input);
-  const workout = { ...input, title: input.title.trim(), id: ctx.id(), studentId: me.id } as Workout;
-  return { state: { ...state, workouts: [workout, ...state.workouts] }, result: { workoutId: workout.id } };
+  const { tagIds = [], ...rest } = input;
+  const workout = { ...rest, title: input.title.trim(), id: ctx.id(), studentId: me.id } as Workout;
+  const tags = newTags(state, me, workout.id, tagIds, ctx.now);
+  return { state: { ...state, workouts: [workout, ...state.workouts], tags: [...state.tags, ...tags] }, result: { workoutId: workout.id } };
+}
+
+// ---------- Tags and photos ----------
+
+/** The owner tags more training partners after posting. */
+export function tagFriends(state: AppState, input: { workoutId: ID; studentIds: ID[] }, ctx: Ctx): Result {
+  const me = requireMe(state);
+  if (!state.workouts.some(w => w.id === input.workoutId && w.studentId === me.id)) fail('Only the owner can tag friends.');
+  const tags = newTags(state, me, input.workoutId, input.studentIds, ctx.now);
+  return { state: { ...state, tags: [...state.tags, ...tags] }, result: undefined };
+}
+
+/** The tagged student accepts (it joins their profile) or declines (it disappears for them). */
+export function respondToTag(state: AppState, input: { workoutId: ID; accept: boolean }): Result {
+  const me = requireMe(state);
+  if (!tagOf(state, input.workoutId, me.id)) fail('That tag is gone.');
+  const status = input.accept ? 'accepted' as const : 'declined' as const;
+  return { state: { ...state, tags: state.tags.map(t => (t.workoutId === input.workoutId && t.studentId === me.id ? { ...t, status } : t)) }, result: undefined };
+}
+
+/** The owner removes a tag, or the tagged student removes themselves. */
+export function removeTag(state: AppState, input: { workoutId: ID; studentId: ID }): Result {
+  const me = requireMe(state);
+  const owns = state.workouts.some(w => w.id === input.workoutId && w.studentId === me.id);
+  if (!owns && input.studentId !== me.id) fail('Only the owner can remove tags.');
+  return { state: { ...state, tags: state.tags.filter(t => !(t.workoutId === input.workoutId && t.studentId === input.studentId)) }, result: undefined };
+}
+
+export function addPhoto(state: AppState, input: { workoutId: ID; uri: string }, ctx: Ctx): Result<{ photoId: ID }> {
+  const me = requireMe(state);
+  const w = state.workouts.find(x => x.id === input.workoutId) ?? fail('That workout is gone.');
+  if (!canAddPhotos(state, me.id, w)) fail('Accept the tag to add photos.');
+  if (state.photos.filter(p => p.workoutId === w.id).length >= MAX_PHOTOS) fail(`A workout holds up to ${MAX_PHOTOS} photos.`);
+  const photo = { id: ctx.id(), workoutId: w.id, studentId: me.id, uri: input.uri, at: ctx.now };
+  return { state: { ...state, photos: [...state.photos, photo] }, result: { photoId: photo.id } };
+}
+
+/** The uploader or the workout's owner removes a photo. */
+export function removePhoto(state: AppState, photoId: ID): Result {
+  const me = requireMe(state);
+  const p = state.photos.find(x => x.id === photoId) ?? fail('That photo is gone.');
+  const owns = state.workouts.some(w => w.id === p.workoutId && w.studentId === me.id);
+  if (p.studentId !== me.id && !owns) fail('Only the person who added it or the owner can remove a photo.');
+  return { state: { ...state, photos: state.photos.filter(x => x.id !== photoId) }, result: undefined };
 }
 
 export function deleteWorkout(state: AppState, workoutId: ID): Result {
@@ -117,6 +176,8 @@ export function deleteWorkout(state: AppState, workoutId: ID): Result {
       workouts: state.workouts.filter(w => w.id !== workoutId),
       kudos: state.kudos.filter(k => k.workoutId !== workoutId),
       comments: state.comments.filter(c => c.workoutId !== workoutId),
+      tags: state.tags.filter(t => t.workoutId !== workoutId),
+      photos: state.photos.filter(p => p.workoutId !== workoutId),
     },
     result: undefined,
   };

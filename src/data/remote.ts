@@ -1,24 +1,30 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AppState, Comment, Follow, Group, GroupMessage, ID, Kudos, Meetup, Student, Workout } from './types';
+import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, Meetup, Student, Workout, WorkoutPhoto, WorkoutTag } from './types';
 
 // Reads and writes between Supabase rows and the app's AppState shapes. The server's
 // row-level security decides what comes back, so loading "everything" means everything this
 // student is allowed to see: their campus, never another school's.
 
 export type Table =
-  | 'students' | 'follows' | 'workouts' | 'workout_notes' | 'workout_tags' | 'kudos' | 'comments'
+  | 'students' | 'follows' | 'workouts' | 'workout_notes' | 'workout_tags' | 'workout_photos' | 'kudos' | 'comments'
   | 'meetups' | 'meetup_attendees' | 'groups' | 'group_members' | 'group_messages';
 
 /** Which AppState lists a table change can affect, so a live change refetches only those. */
 export const TABLE_SLICES: Record<Table, Slice[]> = {
   students: ['students'], kudos: ['kudos'], comments: ['comments'],
-  follows: ['follows', 'workouts', 'kudos', 'comments'], // following changes what you can see
-  workouts: ['workouts'], workout_notes: ['workouts'], workout_tags: ['workouts', 'kudos', 'comments'],
+  follows: ['follows', 'workouts', 'kudos', 'comments', 'tags', 'photos'], // following changes what you can see
+  workouts: ['workouts'], workout_notes: ['workouts'], workout_photos: ['photos'],
+  workout_tags: ['tags', 'workouts', 'kudos', 'comments', 'photos'], // a tag reveals the workout
   meetups: ['meetups'], meetup_attendees: ['meetups'],
   groups: ['groups'], group_members: ['groups', 'messages'], group_messages: ['messages'],
 };
-export type Slice = 'students' | 'follows' | 'workouts' | 'kudos' | 'comments' | 'meetups' | 'groups' | 'messages';
-export const ALL_SLICES: Slice[] = ['students', 'follows', 'workouts', 'kudos', 'comments', 'meetups', 'groups', 'messages'];
+export type Slice = 'students' | 'follows' | 'workouts' | 'kudos' | 'comments' | 'meetups' | 'groups' | 'messages' | 'tags' | 'photos';
+export const ALL_SLICES: Slice[] = ['students', 'follows', 'workouts', 'kudos', 'comments', 'meetups', 'groups', 'messages', 'tags', 'photos'];
+
+export const PHOTO_BUCKET = 'workout-photos';
+// Photos are private, so the app reads them through signed links. A day outlasts any
+// session; every reload signs fresh ones.
+const PHOTO_LINK_SECONDS = 24 * 3600;
 
 type Row = Record<string, any>;
 
@@ -39,7 +45,7 @@ const toStudent = (r: Row): Student => ({
   interests: r.interests ?? [], bio: r.bio ?? undefined, createdAt: r.created_at,
 });
 
-function toWorkout(r: Row, note: string | undefined, tagged: ID[]): Workout {
+function toWorkout(r: Row, note: string | undefined): Workout {
   const base = {
     id: r.id, studentId: r.student_id, title: r.title, startedAt: r.started_at, durationSec: r.duration_sec,
     visibility: r.visibility, ...(note ? { note } : {}), ...(r.group_id ? { groupId: r.group_id } : {}),
@@ -47,7 +53,7 @@ function toWorkout(r: Row, note: string | undefined, tagged: ID[]): Workout {
   switch (r.kind) {
     case 'lift': return { ...base, kind: 'lift', exercises: r.exercises };
     case 'run': case 'ride': return { ...base, kind: r.kind, distanceKm: Number(r.distance_km), ...(r.route ? { route: r.route } : {}) };
-    case 'sport': return { ...base, kind: 'sport', activityId: r.activity_id, withIds: tagged, ...(r.result ? { result: r.result } : {}) };
+    case 'sport': return { ...base, kind: 'sport', activityId: r.activity_id, ...(r.result ? { result: r.result } : {}) };
     default: return { ...base, kind: r.kind, activityId: r.activity_id };
   }
 }
@@ -86,11 +92,24 @@ export async function load(db: SupabaseClient, slices: Slice[]): Promise<Partial
   if (want.has('workouts')) jobs.push(Promise.all([
     rows(db.from('workouts').select('*').order('started_at', { ascending: false })),
     rows(db.from('workout_notes').select('*')),
-    rows(db.from('workout_tags').select('*').neq('status', 'declined').order('created_at')),
-  ]).then(([ws, notes, tags]) => {
+  ]).then(([ws, notes]) => {
     const noteBy = new Map(notes.map(n => [n.workout_id, n.body as string]));
-    const tagsBy = groupBy(tags, 'workout_id');
-    out.workouts = ws.map(w => toWorkout(w, noteBy.get(w.id), (tagsBy.get(w.id) ?? []).map(t => t.student_id)));
+    out.workouts = ws.map(w => toWorkout(w, noteBy.get(w.id)));
+  }));
+  if (want.has('tags')) jobs.push(rows(db.from('workout_tags').select('*').order('created_at')).then(r => {
+    out.tags = r.map((t): WorkoutTag => ({ workoutId: t.workout_id, studentId: t.student_id, status: t.status, at: t.created_at }));
+  }));
+  if (want.has('photos')) jobs.push(rows(db.from('workout_photos').select('*').order('created_at')).then(async r => {
+    const paths = r.map(p => p.path as string);
+    const signed = new Map<string, string>();
+    if (paths.length) {
+      const { data, error } = await db.storage.from(PHOTO_BUCKET).createSignedUrls(paths, PHOTO_LINK_SECONDS);
+      if (error) throw new Error(error.message);
+      data?.forEach(d => { if (d.path && d.signedUrl) signed.set(d.path, d.signedUrl); });
+    }
+    out.photos = r.filter(p => signed.has(p.path)).map((p): WorkoutPhoto => ({
+      id: p.id, workoutId: p.workout_id, studentId: p.student_id, uri: signed.get(p.path)!, at: p.created_at,
+    }));
   }));
   if (want.has('meetups')) jobs.push(Promise.all([
     rows(db.from('meetups').select('*')),

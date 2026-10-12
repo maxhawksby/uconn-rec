@@ -1,13 +1,13 @@
-import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, LiftExercise, Meetup, RoutePoint, Student, Workout } from './types';
+import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, LiftExercise, Meetup, RoutePoint, Student, Workout, WorkoutPhoto, WorkoutTag } from './types';
 import { PILOT_SCHOOL_ID } from './schools';
 
 // Fictional seed data for the pilot campus. Every person here is made up. Times are
 // generated relative to `now` so the feed always looks fresh on first launch.
 
-export const STATE_VERSION = 1 as const;
+export const STATE_VERSION = 2 as const;
 
 export function emptyState(): AppState {
-  return { version: STATE_VERSION, meId: null, pending: null, students: [], workouts: [], kudos: [], comments: [], follows: [], meetups: [], groups: [], messages: [], waitlist: [] };
+  return { version: STATE_VERSION, meId: null, pending: null, students: [], workouts: [], kudos: [], comments: [], follows: [], meetups: [], groups: [], messages: [], waitlist: [], tags: [], photos: [] };
 }
 
 // Small seeded PRNG so demo data (and tests) are stable.
@@ -135,6 +135,10 @@ export function makeDemoState(now: Date = new Date()): AppState {
   const routeRng = rng(7);
 
   const workouts: Workout[] = [];
+  const tags: WorkoutTag[] = [];
+  const photos: WorkoutPhoto[] = [];
+  const tag = (workoutId: string, studentId: string, at: string, status: WorkoutTag['status'] = 'accepted') => tags.push({ workoutId, studentId, status, at });
+  const photo = (workoutId: string, studentId: string, name: string, at: string) => photos.push({ id: `p-${photos.length}`, workoutId, studentId, uri: `demo:${name}`, at });
   let n = 0;
   students.forEach((s, si) => {
     for (let daysAgo = 0; daysAgo < 14; daysAgo++) {
@@ -157,13 +161,33 @@ export function makeDemoState(now: Date = new Date()): AppState {
         const durationSec = Math.round(km * 130);
         workouts.push({ ...base, kind: 'ride', title: 'Back roads ride', distanceKm: km, durationSec, route: loopRoute(routeRng, km, durationSec) });
       } else if (SPORT_TITLES[interest]) {
-        const mates = students.filter(o => o.id !== s.id && o.interests.includes(interest)).slice(0, 3).map(o => o.id);
-        workouts.push({ ...base, kind: 'sport', title: SPORT_TITLES[interest], activityId: interest, withIds: mates, durationSec: (45 + Math.floor(r() * 60)) * 60, result: r() > 0.5 ? 'W 21-17' : undefined });
+        students.filter(o => o.id !== s.id && o.interests.includes(interest)).slice(0, 3).forEach(o => tag(id, o.id, startedAt));
+        workouts.push({ ...base, kind: 'sport', title: SPORT_TITLES[interest], activityId: interest, durationSec: (45 + Math.floor(r() * 60)) * 60, result: r() > 0.5 ? 'W 21-17' : undefined });
       } else {
         workouts.push({ ...base, kind: 'class', title: CLASS_TITLES[interest] ?? 'Workout', activityId: interest, durationSec: (40 + Math.floor(r() * 30)) * 60 });
       }
     }
   });
+
+  // Workouts done together: tagged friends accepted, and both sides added photos. Kayla's
+  // bench session still waits on Jordan's answer, so signing in as Jordan shows a request.
+  const lastHour = (hoursAgo: number) => iso(new Date(now.getTime() - hoursAgo * 3600000));
+  workouts.push(
+    { ...lift(r, 2), id: 'w-shared-legs', studentId: 'marcus', kind: 'lift', title: 'Heavy leg day', startedAt: lastHour(3), durationSec: 72 * 60, visibility: 'campus', groupId: 'g-6am' },
+    { ...lift(r, 0), id: 'w-shared-bench', studentId: 'kayla', kind: 'lift', title: '6AM bench crew', startedAt: iso(at(1, 6, 15)), durationSec: 58 * 60, visibility: 'campus' },
+  );
+  const sunriseKm = 6.4, sunriseSec = Math.round(sunriseKm * 330);
+  workouts.push({ id: 'w-shared-run', studentId: 'caleb', kind: 'run', title: 'Sunrise loop', startedAt: iso(at(1, 7)), durationSec: sunriseSec, visibility: 'campus', distanceKm: sunriseKm, route: loopRoute(routeRng, sunriseKm, sunriseSec) });
+  tag('w-shared-legs', 'jordan', lastHour(2));
+  tag('w-shared-bench', 'sofia', iso(at(1, 7, 30)));
+  tag('w-shared-bench', 'jordan', iso(at(1, 7, 30)), 'pending');
+  tag('w-shared-run', 'hannah', iso(at(1, 8)));
+  photo('w-shared-legs', 'marcus', 'lift-row', lastHour(2));
+  photo('w-shared-legs', 'jordan', 'lift-plates', lastHour(1.5));
+  photo('w-shared-bench', 'kayla', 'lift-turf', iso(at(1, 7, 20)));
+  photo('w-shared-run', 'hannah', 'run-club', iso(at(1, 8, 10)));
+  const hoops = workouts.find(w => w.kind === 'sport' && w.activityId === 'basketball');
+  if (hoops) { photo(hoops.id, hoops.studentId, 'hoops-courts', hoops.startedAt); photo(hoops.id, hoops.studentId, 'hoops-sunset', hoops.startedAt); }
 
   const kudos: Kudos[] = [];
   const comments: Comment[] = [];
@@ -200,5 +224,5 @@ export function makeDemoState(now: Date = new Date()): AppState {
     ['umass-amherst', 9], ['uri', 4], ['quinnipiac', 6], ['bu', 3],
   ].flatMap(([schoolId, count]) => Array.from({ length: count as number }, (_, i) => ({ email: `student${i + 1}@${schoolId === 'umass-amherst' ? 'umass.edu' : schoolId === 'quinnipiac' ? 'quinnipiac.edu' : `${schoolId}.edu`}`, schoolId: schoolId as string, at: createdAt })));
 
-  return { ...emptyState(), students, follows, workouts, kudos, comments, groups, messages, meetups, waitlist };
+  return { ...emptyState(), students, follows, workouts, kudos, comments, groups, messages, meetups, waitlist, tags, photos };
 }

@@ -65,6 +65,7 @@ check('Titles follow the time of day and the activity', () => {
   assert.equal(M.suggestTitle('lift', new Date(2026, 9, 9, 7)), 'Morning Lift');
   assert.equal(M.suggestTitle('run', new Date(2026, 9, 9, 13)), 'Afternoon Run');
   assert.equal(M.suggestTitle('sport', new Date(2026, 9, 9, 19), 'Basketball'), 'Evening Basketball');
+  assert.equal(M.suggestTitle('other', new Date(2026, 9, 9, 19), 'Something else'), 'Evening Workout');
   assert.equal(M.suggestTitle('class', new Date(2026, 9, 9, 23), 'Yoga'), 'Night Yoga');
 });
 

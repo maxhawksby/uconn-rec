@@ -7,7 +7,7 @@ import * as A from './actions';
 import { emptyState } from './demo';
 import { normalizeEmail, schoolForEmail, signupGate } from './selectors';
 import { PILOT_UNLOCK_AT } from './schools';
-import { ALL_SLICES, TABLE_SLICES, load, workoutRow, type Slice, type Table } from './remote';
+import { ALL_SLICES, PHOTO_BUCKET, TABLE_SLICES, load, workoutRow, type Slice, type Table } from './remote';
 import { StoreContext, type Actions, type Store } from './storeContext';
 
 // The Supabase backend for the store contract in storeContext.ts.
@@ -206,19 +206,18 @@ export function RemoteStoreProvider({ db, children }: { db: SupabaseClient; chil
       logWorkout(input) {
         const r = local(s => A.logWorkout(s, input, ctx()));
         const w = current.current.workouts.find(x => x.id === r.workoutId)!;
-        write(['workouts'], "Couldn't save your workout", async () => {
+        const tagged = current.current.tags.filter(t => t.workoutId === w.id).map(t => t.studentId);
+        write(['workouts', 'tags'], "Couldn't save your workout", async () => {
           await must(db.from('workouts').insert(workoutRow(w)));
           if (w.note) await must(db.from('workout_notes').insert({ workout_id: w.id, body: w.note }));
-          if (w.kind === 'sport' && w.withIds.length) {
-            await must(db.from('workout_tags').insert(w.withIds.map(id => ({ workout_id: w.id, student_id: id }))));
-          }
+          if (tagged.length) await must(db.from('workout_tags').insert(tagged.map(id => ({ workout_id: w.id, student_id: id }))));
         });
         return r;
       },
 
       deleteWorkout(id) {
         local(s => A.deleteWorkout(s, id));
-        write(['workouts', 'kudos', 'comments'], "Couldn't delete the workout", () => must(db.from('workouts').delete().eq('id', id)));
+        write(['workouts', 'kudos', 'comments', 'tags', 'photos'], "Couldn't delete the workout", () => must(db.from('workouts').delete().eq('id', id)));
       },
 
       toggleKudos(id) {
@@ -239,6 +238,54 @@ export function RemoteStoreProvider({ db, children }: { db: SupabaseClient; chil
       deleteComment(id) {
         local(s => A.deleteComment(s, id));
         write(['comments'], "Couldn't delete the comment", () => must(db.from('comments').delete().eq('id', id)));
+      },
+
+      tagFriends(input) {
+        const before = new Set(current.current.tags.filter(t => t.workoutId === input.workoutId).map(t => t.studentId));
+        local(s => A.tagFriends(s, input, ctx()));
+        const added = current.current.tags.filter(t => t.workoutId === input.workoutId && !before.has(t.studentId));
+        if (!added.length) return;
+        write(['tags'], "Couldn't tag", () => must(db.from('workout_tags').insert(added.map(t => ({ workout_id: t.workoutId, student_id: t.studentId })))));
+      },
+
+      respondToTag(input) {
+        local(s => A.respondToTag(s, input));
+        write(['tags', 'workouts', 'photos'], "Couldn't answer the tag", () => must(db.rpc('respond_to_tag', { workout: input.workoutId, accept: input.accept })));
+      },
+
+      removeTag(input) {
+        local(s => A.removeTag(s, input));
+        write(['tags', 'workouts'], "Couldn't remove the tag", () => must(db.from('workout_tags').delete().eq('workout_id', input.workoutId).eq('student_id', input.studentId)));
+      },
+
+      addPhoto(input) {
+        // Shows the picked file at once; the upload and its row follow. The refetch swaps in
+        // the signed link to the stored copy.
+        const r = local(s => A.addPhoto(s, input, ctx()));
+        const type = input.mimeType ?? 'image/jpeg';
+        const path = `${input.workoutId}/${r.photoId}.${type.split('/')[1] === 'png' ? 'png' : 'jpg'}`;
+        write(['photos'], "Couldn't add the photo", async () => {
+          const body = await (await fetch(input.uri)).arrayBuffer();
+          await must(db.storage.from(PHOTO_BUCKET).upload(path, body, { contentType: type }));
+          try {
+            await must(db.from('workout_photos').insert({ id: r.photoId, workout_id: input.workoutId, path }));
+          } catch (e) {
+            await db.storage.from(PHOTO_BUCKET).remove([path]); // don't leave an orphaned file
+            throw e;
+          }
+        });
+        return r;
+      },
+
+      removePhoto(id) {
+        local(s => A.removePhoto(s, id));
+        write(['photos'], "Couldn't remove the photo", async () => {
+          const rows = await must(db.from('workout_photos').delete().eq('id', id).select('path'));
+          const path = (rows as { path: string }[])[0]?.path;
+          // Storage only lets the uploader delete the file; an owner removing a friend's photo
+          // still removes it from the workout.
+          if (path) await db.storage.from(PHOTO_BUCKET).remove([path]);
+        });
       },
 
       // Following changes which workouts you can see, and so their kudos and comments too.

@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { colors, gutter, minTouch, radius, space } from '../theme';
-import { Avatar, Button, Icon, Input, Text } from '../ui';
-import type { Student } from '../data/types';
+import { gutter, space } from '../theme';
+import { Button, Input, Text } from '../ui';
 import { ACTIVITIES, ACTIVITY_BY_ID } from '../data/activities';
 import { formatDuration } from '../data/selectors';
 import { suggestTitle } from './math';
@@ -13,16 +12,14 @@ export type QuickMode = 'sport' | 'session';
 
 type Props = {
   mode: QuickMode;
-  preset?: { activityId?: string; withIds?: string[] };
+  preset?: { activityId?: string; tagIds?: string[] }; // tagIds: last time's teammates, preselected at Save
   interests: string[];
-  /** Students the user follows, for "played with". */
-  friends: Student[];
   onFinish: (f: Finished) => void;
   onDiscard: () => void;
 };
 
-/** Pickup games, intramurals, classes and everything else: activity + duration (+ who). */
-export function QuickLogger({ mode, preset, interests, friends, onFinish, onDiscard }: Props) {
+/** Pickup games, intramurals, classes and everything else: activity + duration. Who you played with is tagged at Save. */
+export function QuickLogger({ mode, preset, interests, onFinish, onDiscard }: Props) {
   const isSport = mode === 'sport';
   const options = useMemo(() => {
     const list = ACTIVITIES.filter(a => (isSport ? a.kind === 'sport' : a.kind === 'class' || a.kind === 'other'));
@@ -32,11 +29,10 @@ export function QuickLogger({ mode, preset, interests, friends, onFinish, onDisc
 
   const [activityId, setActivityId] = useState<string | null>(preset?.activityId && ACTIVITY_BY_ID[preset.activityId] ? preset.activityId : null);
   const [minutes, setMinutes] = useState(isSport ? 60 : 45);
-  const [withIds, setWithIds] = useState<string[]>(() => (preset?.withIds ?? []).filter(id => friends.some(f => f.id === id)));
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
 
-  const dirty = !!activityId || withIds.length > 0 || !!result.trim();
+  const dirty = !!activityId || !!result.trim();
   const discard = useCallback(() => (dirty ? confirmDiscard(onDiscard) : onDiscard()), [dirty, onDiscard]);
   useBackGuard(true, discard);
 
@@ -47,15 +43,14 @@ export function QuickLogger({ mode, preset, interests, friends, onFinish, onDisc
     const durationSec = minutes * 60;
     const startedAt = new Date(Date.now() - durationSec * 1000).toISOString();
     const stats = [{ label: 'Time', value: formatDuration(durationSec) }];
+    const tagIds = preset?.tagIds;
     if (isSport) {
-      stats.push({ label: 'Played with', value: String(withIds.length) });
-      onFinish({ draft: { kind: 'sport', activityId: activity.id, withIds, result: result.trim() || undefined, durationSec, startedAt }, stats, activityName: activity.name });
+      onFinish({ draft: { kind: 'sport', activityId: activity.id, result: result.trim() || undefined, durationSec, startedAt }, stats, activityName: activity.name, tagIds });
     } else {
-      onFinish({ draft: { kind: activity.kind === 'class' ? 'class' : 'other', activityId: activity.id, durationSec, startedAt }, stats, activityName: activity.name });
+      onFinish({ draft: { kind: activity.kind === 'class' ? 'class' : 'other', activityId: activity.id, durationSec, startedAt }, stats, activityName: activity.name, tagIds });
     }
   }
 
-  const toggle = (id: string) => setWithIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
   const title = suggestTitle(isSport ? 'sport' : 'class', new Date(), activity?.name);
 
   return (
@@ -71,30 +66,6 @@ export function QuickLogger({ mode, preset, interests, friends, onFinish, onDisc
 
         {isSport ? (
           <>
-            <SectionLabel right={withIds.length ? <Text variant="smallStrong" color="accentText">{withIds.length} tagged</Text> : undefined}>Played with</SectionLabel>
-            {friends.length === 0 ? (
-              <View style={styles.noFriends}>
-                <Icon name="people-outline" size={20} color="faint" />
-                <Text variant="small" color="muted" style={styles.flex}>Follow classmates to tag them in your games.</Text>
-              </View>
-            ) : (
-              <View style={styles.people}>
-                {friends.map(f => {
-                  const on = withIds.includes(f.id);
-                  return (
-                    <Pressable key={f.id} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={`${f.firstName} ${f.lastName}`}
-                      onPress={() => toggle(f.id)} style={({ pressed }) => [styles.person, pressed && styles.pressed]}>
-                      <Avatar student={f} size={36} />
-                      <View style={styles.flex}>
-                        <Text variant="bodyStrong">{f.firstName} {f.lastName}</Text>
-                        <Text variant="tiny" color="muted">{f.classYear}</Text>
-                      </View>
-                      <View style={[styles.box, on && styles.boxOn]}>{on ? <Icon name="checkmark" size={16} color="onBoard" /> : null}</View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
             <SectionLabel>Result (optional)</SectionLabel>
             <Input value={result} onChangeText={setResult} placeholder="W 21-17, or 'ran 5 games'" maxLength={40} returnKeyType="done" />
           </>
@@ -108,14 +79,7 @@ export function QuickLogger({ mode, preset, interests, friends, onFinish, onDisc
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  flex: { flex: 1 },
   content: { paddingHorizontal: gutter, paddingBottom: space.x4 },
   error: { marginTop: space.sm },
-  noFriends: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.line },
-  people: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, overflow: 'hidden' },
-  person: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, minHeight: minTouch + 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-  pressed: { backgroundColor: colors.sunken },
-  box: { width: 24, height: 24, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
-  boxOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   cta: { marginTop: space.x3 },
 });

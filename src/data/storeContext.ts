@@ -21,6 +21,12 @@ export type Actions = {
   toggleKudos(workoutId: ID): { kudoed: boolean };
   addComment(input: { workoutId: ID; body: string }): { commentId: ID };
   deleteComment(commentId: ID): void;
+  // training partners and photos
+  tagFriends(input: { workoutId: ID; studentIds: ID[] }): void;
+  respondToTag(input: { workoutId: ID; accept: boolean }): void;
+  removeTag(input: { workoutId: ID; studentId: ID }): void;
+  addPhoto(input: { workoutId: ID; uri: string; mimeType?: string }): { photoId: ID }; // uri: a file the student picked
+  removePhoto(photoId: ID): void;
   // people
   follow(studentId: ID): void;
   unfollow(studentId: ID): void;

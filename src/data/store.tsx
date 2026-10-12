@@ -4,6 +4,7 @@ import type { AppState } from './types';
 import { StoreContext, type Actions, type Store } from './storeContext';
 import * as A from './actions';
 import { makeDemoState, STATE_VERSION } from './demo';
+import { migrate } from './migrate';
 import { me as selectMe, waitlistStatus } from './selectors';
 import { supabase } from './supabase';
 import { RemoteStoreProvider } from './remoteStore';
@@ -29,8 +30,9 @@ const KEY = 'valence-state-v1';
 function isAppState(x: unknown): x is AppState {
   const s = x as AppState;
   return !!s && typeof s === 'object' && s.version === STATE_VERSION &&
-    (['students', 'workouts', 'kudos', 'comments', 'follows', 'meetups', 'groups', 'messages', 'waitlist'] as const).every(k => Array.isArray(s[k]));
+    (['students', 'workouts', 'kudos', 'comments', 'follows', 'meetups', 'groups', 'messages', 'waitlist', 'tags', 'photos'] as const).every(k => Array.isArray(s[k]));
 }
+
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -46,7 +48,7 @@ function DemoStoreProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     AsyncStorage.getItem(KEY).then(raw => {
       if (!active || !raw) return;
-      const parsed: unknown = JSON.parse(raw);
+      const parsed = migrate(JSON.parse(raw));
       if (!isAppState(parsed)) throw new Error('Invalid stored data');
       current.current = parsed; setState(parsed);
     }).catch(() => { if (active) setSyncError('Saved data could not be loaded. New changes will replace it.'); })
@@ -86,6 +88,11 @@ function DemoStoreProvider({ children }: { children: React.ReactNode }) {
       toggleKudos: id => run(s => A.toggleKudos(s, id, ctx())),
       addComment: input => run(s => A.addComment(s, input, ctx())),
       deleteComment: id => run(s => A.deleteComment(s, id)),
+      tagFriends: input => run(s => A.tagFriends(s, input, ctx())),
+      respondToTag: input => run(s => A.respondToTag(s, input)),
+      removeTag: input => run(s => A.removeTag(s, input)),
+      addPhoto: input => run(s => A.addPhoto(s, input, ctx())),
+      removePhoto: id => run(s => A.removePhoto(s, id)),
       follow: id => run(s => A.follow(s, id, ctx())),
       unfollow: id => run(s => A.unfollow(s, id)),
       createMeetup: input => run(s => A.createMeetup(s, input, ctx())),

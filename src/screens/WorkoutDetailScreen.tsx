@@ -3,9 +3,9 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } f
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { RootScreenProps } from '../navigation/types';
-import type { Comment, Student, Workout } from '../data/types';
+import type { Comment, ID, Student, Workout, WorkoutPhoto } from '../data/types';
 import { useMe, useStore } from '../data/store';
-import { kudosGivers, relativeTime, studentById, workoutById } from '../data/selectors';
+import { MAX_PHOTOS, canAddPhotos, followingIds, kudosGivers, relativeTime, studentById, tagCandidates, tagOf, tagsFor, workoutById } from '../data/selectors';
 import { Avatar, Button, EmptyState, Icon, KeyboardFrame, Scoreboard, Text, attempt } from '../ui';
 import { colors, gutter, hitSlop, minTouch, radius, space, type } from '../theme';
 import { AuthorRow, WorkoutBody, activityIcon, activityLabel } from '../feed/WorkoutCard';
@@ -15,6 +15,8 @@ import { KudosButton } from '../feed/KudosButton';
 import { useKeyboardVisible } from '../feed/useKeyboardVisible';
 import { workoutStats } from '../feed/stats';
 import { VISIBILITY_LABEL, fullDate, fullName, kindLabel, plural } from '../feed/model';
+import { TagRequestCard, TagSheet } from '../feed/tags';
+import { PhotoGallery, pickPhotos } from '../feed/photos';
 
 const COMMENT_MAX = 500;
 
@@ -25,12 +27,18 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
   const keyboardUp = useKeyboardVisible();
   const [removed, setRemoved] = useState(false);
   const [draft, setDraft] = useState('');
+  const [tagging, setTagging] = useState(false);
   const scroll = useRef<ScrollView>(null);
   const scrollToEndNext = useRef(false);
   const now = useMemo(() => new Date(), [state]);
 
   const item = workoutById(state, route.params.workoutId, me.id);
   const givers = useMemo(() => (item ? kudosGivers(state, item.workout.id) : []), [state, item?.workout.id]);
+  const candidates = useMemo(() => tagCandidates(state, me.id), [state, me.id]);
+  const followingCount = useMemo(() => {
+    const following = new Set(followingIds(state, me.id));
+    return candidates.filter(c => following.has(c.id)).length;
+  }, [state, me.id, candidates]);
 
   useLayoutEffect(() => {
     if (item) navigation.setOptions({ title: kindLabel(item.workout).toUpperCase() });
@@ -48,9 +56,35 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
     );
   }
 
-  const { workout: w, author, comments, kudosCount, kudoedByMe, isMine } = item;
+  const { workout: w, author, tagged, photos, comments, kudosCount, kudoedByMe, isMine } = item;
   const vis = VISIBILITY_LABEL[w.visibility];
   const trimmed = draft.trim();
+  const myTag = tagOf(state, w.id, me.id);
+  const tags = tagsFor(state, w.id);
+  const canAdd = canAddPhotos(state, me.id, w);
+
+  async function addPhotos() {
+    const picked = await pickPhotos(MAX_PHOTOS - photos.length);
+    for (const p of picked) {
+      if (!attempt(() => actions.addPhoto({ workoutId: w.id, uri: p.uri, mimeType: p.mimeType }), "Couldn't add the photo").ok) break;
+    }
+  }
+
+  function confirmRemovePhoto(id: ID) {
+    Alert.alert('Remove this photo?', 'It comes off the workout for everyone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => attempt(() => actions.removePhoto(id), "Couldn't remove the photo") },
+    ]);
+  }
+
+  function confirmRemoveTag(s: Student) {
+    const self = s.id === me.id;
+    Alert.alert(self ? 'Remove yourself?' : `Remove ${s.firstName}?`,
+      self ? "It comes off your profile. The workout stays on the owner's." : `${s.firstName} won't be shown as training with you.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => attempt(() => actions.removeTag({ workoutId: w.id, studentId: s.id }), "Couldn't remove the tag") },
+      ]);
+  }
 
   function send() {
     if (!trimmed) return;
@@ -90,8 +124,17 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
         onContentSizeChange={() => {
           if (scrollToEndNext.current) { scrollToEndNext.current = false; scroll.current?.scrollToEnd({ animated: true }); }
         }}>
+        {myTag?.status === 'pending' ? (
+          <View style={styles.request}>
+            <TagRequestCard author={author} workout={w} now={now}
+              onAnswer={accept => {
+                const res = attempt(() => actions.respondToTag({ workoutId: w.id, accept }), "Couldn't answer the tag");
+                if (res.ok && !accept) navigation.goBack();
+              }} />
+          </View>
+        ) : null}
         <View style={styles.authorWrap}>
-          <AuthorRow author={author} workout={w} now={now} size={44} />
+          <AuthorRow author={author} tagged={tagged} workout={w} now={now} size={44} />
         </View>
         <View style={styles.dateRow}>
           <Text variant="tiny" color="muted">{fullDate(w.startedAt)}</Text>
@@ -112,6 +155,37 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
             </View>
             <Text variant="body" color="inkSoft">{w.note}</Text>
           </View>
+        ) : null}
+
+        {photos.length || canAdd ? (
+          <Section title="Photos" count={photos.length}>
+            <PhotoGallery state={state} photos={photos} canAdd={canAdd} onAdd={addPhotos} onRemove={confirmRemovePhoto}
+              canRemove={(p: WorkoutPhoto) => p.studentId === me.id || isMine} />
+            {canAdd && !photos.length ? (
+              <Text variant="small" color="muted">{isMine ? 'Add a photo from the session. Friends you tag can add theirs too.' : 'You trained together, so you can add photos too.'}</Text>
+            ) : null}
+          </Section>
+        ) : null}
+
+        {tags.length || isMine ? (
+          <Section title={w.kind === 'sport' ? 'Played with' : 'Trained with'} count={tagged.length}
+            right={isMine ? <Button label="Tag friends" icon="person-add-outline" variant="secondary" size="sm" onPress={() => setTagging(true)} /> : undefined}>
+            {tags.length ? (
+              <View style={styles.mates}>
+                {tags.map(t => {
+                  const s = studentById(state, t.studentId);
+                  if (!s) return null;
+                  const removable = isMine || (s.id === me.id && t.status === 'accepted');
+                  return (
+                    <MateRow key={s.id} student={s} status={t.status === 'pending' ? 'Waiting for them to accept' : s.id === me.id ? 'You' : s.classYear}
+                      onRemove={removable ? () => confirmRemoveTag(s) : undefined} removeLabel={s.id === me.id ? 'Remove me' : 'Remove'} />
+                  );
+                })}
+              </View>
+            ) : (
+              <Text variant="small" color="muted">Trained with someone? Tag them so it lands on their profile too.</Text>
+            )}
+          </Section>
         ) : null}
 
         <Section title="Kudos" count={kudosCount} right={isMine ? undefined : <KudosButton workoutId={w.id} given={kudoedByMe} count={kudosCount} isMine={false} label />}>
@@ -170,6 +244,10 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
         ) : null}
       </ScrollView>
 
+      <TagSheet visible={tagging} candidates={candidates} followingCount={followingCount} alreadyTagged={tags.map(t => t.studentId)}
+        onClose={() => setTagging(false)}
+        onTag={ids => { if (attempt(() => actions.tagFriends({ workoutId: w.id, studentIds: ids }), "Couldn't tag").ok) setTagging(false); }} />
+
       {draft.length > COMMENT_MAX - 80 ? (
         <View style={styles.counter}>
           <Text variant="tiny" color={draft.length >= COMMENT_MAX ? 'danger' : 'muted'}>{draft.length}/{COMMENT_MAX}</Text>
@@ -219,7 +297,6 @@ function Stats({ workout: w }: { workout: Workout }) {
     );
   }
   if (w.kind === 'sport') {
-    const mates = w.withIds.map(id => studentById(state, id)).filter((s): s is Student => !!s);
     return (
       <View style={styles.statsGap}>
         <View style={styles.activity}>
@@ -227,38 +304,34 @@ function Stats({ workout: w }: { workout: Workout }) {
           <Text variant="eyebrow" color="inkSoft">{activityLabel(w)}</Text>
         </View>
         <Scoreboard stats={workoutStats(w)} />
-        {mates.length ? <PlayedWith students={mates} /> : null}
       </View>
     );
   }
   return (
     <View style={[styles.statsGap, styles.sessionCard]}>
-      <WorkoutBody workout={w} state={state} />
+      <WorkoutBody workout={w} />
     </View>
   );
 }
 
-function PlayedWith({ students }: { students: Student[] }) {
-  return (
-    <View style={styles.mates}>
-      <Text variant="eyebrow" color="muted" style={styles.subhead}>Played with</Text>
-      {students.map(s => <MateRow key={s.id} student={s} />)}
-    </View>
-  );
-}
-
-function MateRow({ student }: { student: Student }) {
+function MateRow({ student, status, onRemove, removeLabel }: { student: Student; status: string; onRemove?: () => void; removeLabel: string }) {
   const nav = useNavigation();
   return (
-    <Pressable onPress={() => nav.navigate('StudentProfile', { studentId: student.id })} accessibilityRole="link" accessibilityLabel={`${fullName(student)}, open profile`}
-      style={({ pressed }) => [styles.mate, pressed && styles.pressed]}>
-      <Avatar student={student} size={36} />
-      <View style={styles.shrink}>
-        <Text variant="bodyStrong">{fullName(student)}</Text>
-        <Text variant="tiny" color="muted">{student.classYear}</Text>
-      </View>
-      <Icon name="chevron-forward" size={16} color="faint" />
-    </Pressable>
+    <View style={styles.mate}>
+      <Pressable onPress={() => nav.navigate('StudentProfile', { studentId: student.id })} accessibilityRole="link" accessibilityLabel={`${fullName(student)}, ${status}. Open profile`}
+        style={({ pressed }) => [styles.mateMain, pressed && styles.pressed]}>
+        <Avatar student={student} size={36} />
+        <View style={styles.shrink}>
+          <Text variant="bodyStrong" numberOfLines={1}>{fullName(student)}</Text>
+          <Text variant="tiny" color="muted">{status}</Text>
+        </View>
+      </Pressable>
+      {onRemove ? (
+        <Pressable onPress={onRemove} hitSlop={hitSlop} accessibilityRole="button" accessibilityLabel={`${removeLabel}: ${fullName(student)}`} style={styles.mateRemove}>
+          <Text variant="tiny" color="muted">{removeLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -291,7 +364,10 @@ const styles = StyleSheet.create({
   activity: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   sessionCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, paddingVertical: space.lg, marginHorizontal: 0 },
   mates: { gap: space.xs },
-  mate: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: minTouch + 8, paddingVertical: space.xs },
+  mate: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: minTouch + 8 },
+  mateMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xs },
+  mateRemove: { minHeight: minTouch, justifyContent: 'center', paddingHorizontal: space.sm },
+  request: { marginBottom: space.lg },
   note: { marginTop: space.xl, padding: space.lg, gap: space.sm, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.line, backgroundColor: colors.surface },
   noteHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   section: { marginTop: space.x3, gap: space.md },

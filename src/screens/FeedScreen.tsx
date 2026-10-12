@@ -4,17 +4,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { TabScreenProps } from '../navigation/types';
 import type { FeedItem } from '../data/types';
 import { useMe, useStore } from '../data/store';
-import { feed, profileStats } from '../data/selectors';
+import { feed, pendingTags, profileStats } from '../data/selectors';
 import { SCHOOL_BY_ID } from '../data/schools';
-import { Chip, EmptyState, Icon, Screen, Text } from '../ui';
+import { Chip, EmptyState, Icon, Screen, Text, attempt } from '../ui';
 import { colors, gutter, radius, space } from '../theme';
 import { WorkoutCard } from '../feed/WorkoutCard';
 import { WeekHeader } from '../feed/WeekHeader';
+import { TagRequestCard } from '../feed/tags';
 
 type Scope = 'following' | 'campus';
 
 export function FeedScreen({ navigation }: TabScreenProps<'Feed'>) {
-  const { state, syncError } = useStore();
+  const { state, actions, syncError } = useStore();
   const me = useMe();
   const school = SCHOOL_BY_ID[me.schoolId];
   const [scope, setScope] = useState<Scope>('following');
@@ -25,6 +26,7 @@ export function FeedScreen({ navigation }: TabScreenProps<'Feed'>) {
 
   const items = useMemo(() => feed(state, me.id, scope), [state, me.id, scope]);
   const stats = useMemo(() => profileStats(state, me.id, now), [state, me.id, now]);
+  const requests = useMemo(() => pendingTags(state, me.id), [state, me.id]);
 
   // Relative times ("2h") stay honest whenever the tab comes back into view.
   useFocusEffect(useCallback(() => { setNow(new Date()); }, []));
@@ -53,6 +55,16 @@ export function FeedScreen({ navigation }: TabScreenProps<'Feed'>) {
         <View style={styles.banner} accessibilityRole="alert">
           <Icon name="cloud-offline-outline" size={16} color="danger" />
           <Text variant="small" color="danger" style={styles.flex}>{syncError}</Text>
+        </View>
+      ) : null}
+      {requests.length ? (
+        <View style={styles.requests}>
+          {requests.slice(0, 3).map(r => (
+            <TagRequestCard key={r.workout.id} author={r.author} workout={r.workout} now={now}
+              onOpen={() => navigation.navigate('WorkoutDetail', { workoutId: r.workout.id })}
+              onAnswer={accept => attempt(() => actions.respondToTag({ workoutId: r.workout.id, accept }), "Couldn't answer the tag")} />
+          ))}
+          {requests.length > 3 ? <Text variant="tiny" color="muted">{requests.length - 3} more after these</Text> : null}
         </View>
       ) : null}
       <WeekHeader stats={stats} onRecord={record} />
@@ -105,6 +117,7 @@ function Separator() {
 }
 
 const styles = StyleSheet.create({
+  requests: { gap: space.sm, marginBottom: space.lg },
   flex: { flex: 1 },
   filters: { flexDirection: 'row', gap: space.xs, paddingBottom: space.xxs },
   content: { paddingHorizontal: gutter, paddingBottom: space.x4, flexGrow: 1 },

@@ -87,6 +87,10 @@ export function timeOfDay(d: Date) {
 const KIND_WORD: Record<WorkoutKind, string> = { lift: 'Lift', run: 'Run', ride: 'Ride', sport: 'Game', class: 'Class', other: 'Workout' };
 
 /** "Morning Lift", "Evening Basketball", "Night Run". */
+// Catch-all activities read badly in a title ("Evening Something else"), so they use the kind's word.
+const GENERIC_ACTIVITIES = new Set(['Something else']);
+
 export function suggestTitle(kind: WorkoutKind, startedAt: Date, activityName?: string) {
-  return `${timeOfDay(startedAt)} ${activityName && kind !== 'lift' && kind !== 'run' && kind !== 'ride' ? activityName : KIND_WORD[kind]}`;
+  const named = activityName && !GENERIC_ACTIVITIES.has(activityName) && kind !== 'lift' && kind !== 'run' && kind !== 'ride';
+  return `${timeOfDay(startedAt)} ${named ? activityName : KIND_WORD[kind]}`;
 }
