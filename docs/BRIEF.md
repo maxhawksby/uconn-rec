@@ -20,6 +20,9 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - **Meetups tab** replaces Classes. A student posts "pickup basketball at 7, need 4." Others join with one tap.
 - **Groups.** Student-made crews (dorms, clubs, teams, majors) with a group chat.
 - **Profile.** Streaks, weekly summary, personal records, and a school badge (text only, never a school logo).
+- **Saved routines.** Save a workout like "Push day" as a routine. Starting it again fills in the exercises with last time's weights and reps, so there's a number to beat.
+- **Progress.** A Progress section on your profile: each exercise's best set and estimated max over time, weekly volume, and run pace trends.
+- **Workout on the lock screen.** While a workout is running, the lock screen (and the iPhone's Dynamic Island) shows the workout and its clock, and one tap opens it. Apple calls this a Live Activity; Android uses an ongoing notification. It needs our own test build, so it can't run in Expo Go.
 - **Opt-in competition.** Challenges and leaderboards exist only for students who join them. Belonging comes first.
 - **Real backend (Supabase).** Real accounts, data shared between phones, and privacy rules enforced on the server. We develop against a local copy running in Docker, then move to hosted Supabase when real users arrive.
 - **Health sync.** Apple Health and Google Health Connect import workouts from Apple Watch, Garmin, Whoop, Oura and similar. This needs our own test build of the app, so it can't run inside Expo Go.
@@ -43,8 +46,8 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
    - the feed with kudos and comments
    - the Meetups tab, the generic activity list, and the new five-tab layout (Feed, Record, Meetups, Groups, Profile)
 2. **Real backend.** Local Supabase in Docker. Real sign-up with .edu email codes. The feed, groups, meetups and group chat all sync across two phones. Workout photos (stored in Supabase Storage) and shared workouts with tagged friends. Privacy rules live on the server.
-3. **Recording and stats.** Polished lifting logger, GPS runs and rides with maps, sports and class logging. Streaks, weekly summary, personal records, and opt-in challenges and leaderboards.
-4. **Ready to ship.** Report, block and account deletion. Our own test build (via Expo's build service, EAS) with Apple Health and Health Connect sync. Hosted Supabase. TestFlight once Apple approves the developer account.
+3. **Recording and stats.** Polished lifting logger, GPS runs and rides with maps, sports and class logging. Saved routines and the Progress section. Streaks, weekly summary, personal records, and opt-in challenges and leaderboards.
+4. **Ready to ship.** Report, block and account deletion. Our own test build (via Expo's build service, EAS) with Apple Health and Health Connect sync, and the lock-screen workout. Hosted Supabase. TestFlight once Apple approves the developer account.
 
 ## Later ideas
 
@@ -61,6 +64,8 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - Max can tag a friend on a lift, the friend accepts on their phone, and both add a photo that shows on the shared post (milestone 2).
 - Max can record a walk outdoors and see the route on a map with distance and pace (milestone 3).
 - Max can join a challenge and see a leaderboard, and a friend who hasn't joined never sees a ranking (milestone 3).
+- Max can save a lift as a routine, start it a week later with last time's numbers filled in, and see the exercise improve on his Progress section (milestone 3).
+- Max can start a lift, lock his phone, see the workout and its clock on the lock screen, and tap back into it (milestone 4).
 - Max can install the test build, connect Apple Health, and see an Apple Watch workout appear in the app (milestone 4).
 
 ## Open questions
