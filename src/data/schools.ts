@@ -97,7 +97,7 @@ const ROWS: Row[] = [
 ];
 
 export const PILOT_SCHOOL_ID = 'uconn';
-export const PILOT_UNLOCK_AT = 50; // students needed before a waitlisted campus opens (placeholder)
+export const PILOT_UNLOCK_AT = 100; // students needed before a waitlisted campus opens
 
 export const SCHOOLS: School[] = ROWS.map(([id, name, shortName, domains, city, state]) => ({
   id, name, shortName, emailDomains: domains.split(','), city, state, isPilot: id === PILOT_SCHOOL_ID,

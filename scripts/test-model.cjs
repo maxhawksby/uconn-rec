@@ -53,7 +53,7 @@ check('Waitlist dedupes and reports position', () => {
   s = A.joinWaitlist(s, { email: 'a@uri.edu', schoolId: 'uri' }, ctx).state;
   s = A.joinWaitlist(s, { email: 'B@uri.edu', schoolId: 'uri' }, ctx).state;
   s = A.joinWaitlist(s, { email: 'a@uri.edu', schoolId: 'uri' }, ctx).state;
-  assert.deepEqual({ ...S.waitlistStatus(s, 'uri', 'b@uri.edu') }, { count: 2, unlockAt: 50, position: 2 });
+  assert.deepEqual({ ...S.waitlistStatus(s, 'uri', 'b@uri.edu') }, { count: 2, unlockAt: 100, position: 2 });
 });
 check('Wrong code is rejected; sign-up creates a normalized student', () => {
   let s = A.startSignup(D.emptyState(), { email: 'x@uconn.edu', schoolId: 'uconn' }, ctx).state;

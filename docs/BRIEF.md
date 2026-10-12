@@ -9,7 +9,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 ## Scope (v1)
 
 - **New brand.** The name Valence, our own colors and imagery (neutral white, black and grey base with one accent). All UConn names, colors, photos and copied Rec content are removed.
-- **School-first onboarding.** Search for your school, then verify with a one-time code sent to your .edu email. Pilot-school students get in. Everyone else joins a waitlist with a progress message ("your campus unlocks at 50 students").
+- **School-first onboarding.** Search for your school, then verify with a one-time code sent to your .edu email. Pilot-school students get in. Everyone else joins a waitlist with a progress message ("your campus unlocks at 100 students").
 - **Home is the friends feed.** Workouts from friends and groups, with kudos and comments.
 - **Record any workout:**
   - lifting (exercises, sets, reps, weight)
@@ -39,6 +39,11 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - Tapping the phone as a student ID at the gym. Campus card readers only accept credentials the school's card vendor issues and signs with secret keys (Apple Wallet student IDs run on that same school deal). We can't issue one without a partnership, and copying one would be cloning a security credential.
 - Launching beyond the pilot campus.
 
+## Decided (Oct 11)
+
+- A waitlisted campus unlocks at 100 students.
+- A new workout defaults to friends-only; the student can switch it to the whole campus or private when saving.
+
 ## Milestones
 
 1. **Pitch build (by Monday, Oct 12).** Runs in Expo Go with demo data. Includes:
@@ -48,7 +53,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
    - the Meetups tab, the generic activity list, and the new five-tab layout (Feed, Record, Meetups, Groups, Profile)
 2. **Real backend.** Local Supabase in Docker. Real sign-up with .edu email codes. The feed, groups, meetups and group chat all sync across two phones. Workout photos (stored in Supabase Storage) and shared workouts with tagged friends. Privacy rules live on the server.
 3. **Recording and stats.** Polished lifting logger, GPS runs and rides with maps, sports and class logging. Saved routines and the Progress section. Streaks, weekly summary, personal records, and opt-in challenges and leaderboards.
-4. **Ready to ship.** Report, block and account deletion. Our own test build (via Expo's build service, EAS) with Apple Health and Health Connect sync, and the lock-screen workout. Hosted Supabase. TestFlight once Apple approves the developer account.
+4. **Ready to ship.** Report, block and account deletion. Our own test build (via Expo's build service, EAS) with Apple Health and Health Connect sync, and the lock-screen workout. Hosted Supabase. TestFlight once Apple approves the developer account (Max applies in his own name now and moves it to the company account later).
 
 ## Later ideas
 
@@ -73,8 +78,6 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 ## Open questions
 
 - **Name check.** Plain "Valence" is taken in the App Store (a small emotions app), so the store name needs a second part, such as "Valence: Campus Fitness". valence.fit and trainvalence.com looked unregistered on Oct 10; most other Valence domains are taken. A trademark lawyer should confirm before the test build ships.
-- **Pilot unlock number.** How many students unlock a campus (50 is a placeholder)?
-- **Default visibility.** Does a new workout default to friends-only or the whole campus?
 - **Moderation.** Who reviews reports during the pilot?
 - **Brand identity.** Palette, logo and voice. To decide in the milestone 1 design pass.
 - **Company.** When to form an LLC (needed for Garmin and Whoop programs, and for investment).
