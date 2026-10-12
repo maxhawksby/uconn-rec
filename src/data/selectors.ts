@@ -1,4 +1,4 @@
-import type { AppState, FeedItem, ID, PersonalRecord, ProfileStats, School, Student, WeeklyTotals, Workout, WorkoutPhoto, WorkoutTag, Meetup, Group, GroupMessage } from './types';
+import type { AppState, Award, FeedItem, ID, Org, OrgKind, StudentAward, PersonalRecord, ProfileStats, School, Student, WeeklyTotals, Workout, WorkoutPhoto, WorkoutTag, Meetup, Group, GroupMessage } from './types';
 import { SCHOOLS, SCHOOL_BY_ID, PILOT_UNLOCK_AT } from './schools';
 
 // Pure read functions over AppState. No React, no storage: safe to unit test and to
@@ -229,6 +229,50 @@ export function kudosGivers(state: AppState, workoutId: ID): Student[] {
     .sort((a, b) => b.at.localeCompare(a.at))
     .map(k => studentById(state, k.studentId))
     .filter((s): s is Student => !!s);
+}
+
+// ---------- Badges and awards ----------
+
+export const MAX_MAJORS = 2;
+export const MAX_BADGES = 12;
+const KIND_ORDER: OrgKind[] = ['major', 'greek', 'club', 'team'];
+
+/** Orgs a student at this school can see and wear: the shared majors plus their campus's own. */
+export function orgsForSchool(state: AppState, schoolId: ID): Org[] {
+  return state.orgs.filter(o => o.schoolId === null || o.schoolId === schoolId);
+}
+
+/** What a student wears, majors first, then Greek life, clubs and teams. */
+export function badgesFor(state: AppState, studentId: ID): Org[] {
+  const ids = new Set(state.badges.filter(b => b.studentId === studentId).map(b => b.orgId));
+  return state.orgs.filter(o => ids.has(o.id))
+    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || a.name.localeCompare(b.name));
+}
+
+/** Search one kind of org by name. Exact match first, then starts-with, then contains. */
+export function searchOrgs(state: AppState, schoolId: ID, kind: OrgKind, query: string, limit = 30): Org[] {
+  const q = query.trim().toLowerCase();
+  const list = orgsForSchool(state, schoolId).filter(o => o.kind === kind && (!q || o.name.toLowerCase().includes(q)));
+  const score = (o: Org) => (!q ? 0 : o.name.toLowerCase() === q ? 0 : o.name.toLowerCase().startsWith(q) ? 1 : 2);
+  return list.sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name)).slice(0, limit);
+}
+
+export function isAdmin(state: AppState, studentId: ID | null | undefined) {
+  return !!studentId && state.adminIds.includes(studentId);
+}
+
+export type HeldAward = { award: Award; grant: StudentAward };
+
+/** A student's awards, most important (lowest rank) first. */
+export function awardsFor(state: AppState, studentId: ID): HeldAward[] {
+  return state.studentAwards.filter(g => g.studentId === studentId)
+    .flatMap(grant => { const award = state.awards.find(a => a.id === grant.awardId); return award ? [{ award, grant }] : []; })
+    .sort((a, b) => a.award.rank - b.award.rank || a.grant.at.localeCompare(b.grant.at));
+}
+
+/** The one award shown next to a student's name everywhere. */
+export function featuredAward(state: AppState, studentId: ID): Award | undefined {
+  return awardsFor(state, studentId)[0]?.award;
 }
 
 export function liftVolume(w: Workout) {

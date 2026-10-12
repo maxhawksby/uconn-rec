@@ -24,6 +24,12 @@ npm start              # connects to the local Supabase automatically
 
 `npm start` uses the local Supabase whenever it's running, otherwise demo data on the phone (`npm start -- --demo` forces demo data). Sign-up codes are emailed to a local test inbox at http://localhost:56424, never to real inboxes. Seeded students sign in as `firstname.lastname@uconn.edu` (e.g. `jordan.reyes@uconn.edu`). Phones need the Windows firewall to allow port 56421 into WSL. The tunnel mode doesn't reach the local Supabase.
 
+Admins can give awards in the app. Only this script makes someone an admin (after they've signed up); `--founder` also gives the Founder crown:
+
+```bash
+npm run make-admin -- maxwell.hawksby@uconn.edu --founder
+```
+
 ## Check it
 
 ```bash

@@ -5,6 +5,7 @@ import { useMe, useStore } from '../data/store';
 import { groupById, meetupById, studentById } from '../data/selectors';
 import { ACTIVITY_BY_ID, activityName } from '../data/activities';
 import type { Student } from '../data/types';
+import { NameMark } from '../profile/awards';
 import { Avatar, Button, Card, EmptyState, Icon, Scoreboard, Screen, Text, attempt } from '../ui';
 import type { Stat } from '../ui';
 import { colors, gutter, minTouch, radius, space } from '../theme';
@@ -140,7 +141,7 @@ export function MeetupDetailScreen({ route, navigation }: RootScreenProps<'Meetu
               onPress={() => openPerson(s.id)} style={({ pressed }) => [styles.person, i > 0 && styles.personRule, pressed && styles.pressed]}>
               <Avatar student={s} size={40} />
               <View style={styles.flex}>
-                <Text variant="bodyStrong" numberOfLines={1}>{s.firstName} {s.lastName}{s.id === me.id ? ' (you)' : ''}</Text>
+                <NameMark student={s} label={`${s.firstName} ${s.lastName}${s.id === me.id ? ' (you)' : ''}`} />
                 <Text variant="small" color="muted">{s.classYear}</Text>
               </View>
               {s.id === m.hostId ? <View style={[styles.pill, styles.endedPill]}><Text variant="eyebrow" color="inkSoft">Host</Text></View> : null}

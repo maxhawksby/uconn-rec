@@ -17,6 +17,7 @@ import { workoutStats } from '../feed/stats';
 import { VISIBILITY_LABEL, fullDate, fullName, kindLabel, plural } from '../feed/model';
 import { TagRequestCard, TagSheet } from '../feed/tags';
 import { PhotoGallery, pickPhotos } from '../feed/photos';
+import { NameMark } from '../profile/awards';
 
 const COMMENT_MAX = 500;
 
@@ -218,7 +219,7 @@ export function WorkoutDetailScreen({ route, navigation }: RootScreenProps<'Work
                     </Pressable>
                     <View style={styles.commentBody}>
                       <View style={styles.commentHead}>
-                        <Text variant="smallStrong" numberOfLines={1} style={styles.shrink}>{mine ? 'You' : fullName(who)}</Text>
+                        <NameMark student={who} label={mine ? 'You' : fullName(who)} variant="smallStrong" />
                         <Text variant="tiny" color="faint">{relativeTime(c.at, now)}</Text>
                         {mine ? (
                           <Pressable onPress={() => confirmDeleteComment(c)} hitSlop={hitSlop} accessibilityRole="button" accessibilityLabel="Delete your comment" style={styles.commentDelete}>
@@ -322,7 +323,7 @@ function MateRow({ student, status, onRemove, removeLabel }: { student: Student;
         style={({ pressed }) => [styles.mateMain, pressed && styles.pressed]}>
         <Avatar student={student} size={36} />
         <View style={styles.shrink}>
-          <Text variant="bodyStrong" numberOfLines={1}>{fullName(student)}</Text>
+          <NameMark student={student} />
           <Text variant="tiny" color="muted">{status}</Text>
         </View>
       </Pressable>

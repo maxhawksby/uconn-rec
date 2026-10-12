@@ -45,6 +45,7 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "test:db": "supabase test db",
+    "make-admin": "node scripts/make-admin.cjs",
     "db:seed": "node scripts/seed-local.cjs",
     "gen:catalog": "node scripts/gen-catalog-sql.cjs"
   },

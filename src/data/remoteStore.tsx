@@ -298,6 +298,45 @@ export function RemoteStoreProvider({ db, children }: { db: SupabaseClient; chil
         });
       },
 
+      addBadge(id) {
+        local(s => A.addBadge(s, id, ctx()));
+        write(['badges'], "Couldn't add the badge", () => must(db.from('student_badges').upsert({ student_id: meId(), org_id: id }, { ignoreDuplicates: true })));
+      },
+
+      removeBadge(id) {
+        local(s => A.removeBadge(s, id));
+        write(['badges'], "Couldn't remove the badge", () => must(db.from('student_badges').delete().eq('student_id', meId()).eq('org_id', id)));
+      },
+
+      addNewBadge(input) {
+        const r = local(s => A.addNewBadge(s, input, ctx()));
+        const org = current.current.orgs.find(o => o.id === r.orgId)!;
+        write(['orgs', 'badges'], "Couldn't add the badge", async () => {
+          if (r.created) await must(db.from('orgs').insert({ id: org.id, kind: org.kind, name: org.name }));
+          await must(db.from('student_badges').upsert({ student_id: meId(), org_id: org.id }, { ignoreDuplicates: true }));
+        });
+        return r;
+      },
+
+      giveAward(input) {
+        const known = new Set(current.current.awards.map(a => a.id));
+        const r = local(s => A.giveAward(s, input, ctx()));
+        const award = current.current.awards.find(a => a.id === r.awardId)!;
+        const grant = current.current.studentAwards.find(g => g.studentId === input.studentId && g.awardId === r.awardId)!;
+        write(['awards'], "Couldn't give the award", async () => {
+          if (!known.has(award.id)) {
+            await must(db.from('awards').insert({ id: award.id, name: award.name, description: award.description, icon: award.icon, tone: award.tone }));
+          }
+          await must(db.from('student_awards').insert({ student_id: grant.studentId, award_id: grant.awardId, note: grant.note ?? null }));
+        });
+        return r;
+      },
+
+      revokeAward(input) {
+        local(s => A.revokeAward(s, input));
+        write(['awards'], "Couldn't take the award back", () => must(db.from('student_awards').delete().eq('student_id', input.studentId).eq('award_id', input.awardId)));
+      },
+
       // Following changes which workouts you can see, and so their kudos and comments too.
       follow(id) {
         local(s => A.follow(s, id, ctx()));

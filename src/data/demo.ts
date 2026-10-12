@@ -1,13 +1,27 @@
-import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, LiftExercise, Meetup, RoutePoint, Student, Workout, WorkoutPhoto, WorkoutTag } from './types';
+import type { AppState, Award, Comment, Follow, Group, GroupMessage, Kudos, LiftExercise, Meetup, Org, RoutePoint, Student, StudentAward, StudentBadge, Workout, WorkoutPhoto, WorkoutTag } from './types';
 import { PILOT_SCHOOL_ID } from './schools';
+import { MAJORS, majorId } from './majors';
 
 // Fictional seed data for the pilot campus. Every person here is made up. Times are
 // generated relative to `now` so the feed always looks fresh on first launch.
 
-export const STATE_VERSION = 2 as const;
+export const STATE_VERSION = 3 as const;
+
+// The awards every install starts with. Matches the seed in supabase/migrations/*_badges.sql.
+export const DEFAULT_AWARDS: Award[] = [
+  { id: 'founder', name: 'Founder', description: 'Started Valence.', icon: 'crown', tone: 'gold', rank: 0 },
+  { id: 'pilot-crew', name: 'Pilot Crew', description: 'One of the first students on Valence.', icon: 'rocket-launch', tone: 'accent', rank: 10 },
+  { id: 'meetup-host', name: 'Meetup Host', description: 'Brings people together for pickup games and group workouts.', icon: 'bullhorn', tone: 'ink', rank: 50 },
+];
+
+/** The shared majors list plus nothing campus-specific. */
+export const baseOrgs = (): Org[] => MAJORS.map(m => ({ id: m.id, schoolId: null, kind: 'major' as const, name: m.name }));
 
 export function emptyState(): AppState {
-  return { version: STATE_VERSION, meId: null, pending: null, students: [], workouts: [], kudos: [], comments: [], follows: [], meetups: [], groups: [], messages: [], waitlist: [], tags: [], photos: [] };
+  return {
+    version: STATE_VERSION, meId: null, pending: null, students: [], workouts: [], kudos: [], comments: [], follows: [], meetups: [], groups: [], messages: [],
+    waitlist: [], tags: [], photos: [], orgs: baseOrgs(), badges: [], awards: DEFAULT_AWARDS, studentAwards: [], adminIds: [],
+  };
 }
 
 // Small seeded PRNG so demo data (and tests) are stable.
@@ -55,6 +69,25 @@ const PEOPLE: Seed[] = [
   ['caleb', 'Caleb', 'Mensah', 'Junior', ['calisthenics', 'running', 'boxing'], 'Muscle-up club.'],
   ['riley', 'Riley', 'Sutton', 'First year', ['ultimate', 'running', 'pickleball'], 'Frisbee team rookie.'],
 ];
+
+// The pilot campus's own organizations, which students added themselves.
+const CAMPUS_ORGS: [Org['kind'], string][] = [
+  ['greek', 'Alpha Phi'], ['greek', 'Sigma Chi'], ['greek', 'Delta Gamma'], ['greek', 'Phi Delta Theta'],
+  ['club', 'Run Club'], ['club', 'Club Rugby'], ['club', 'Climbing Club'], ['club', 'Club Triathlon'], ['club', 'Ultimate Frisbee'],
+  ['team', 'Club Volleyball'], ['team', 'IM Soccer'],
+];
+const orgId = (name: string) => `org-${PILOT_SCHOOL_ID}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+
+// What each demo student wears: majors (by name) and campus orgs (by name).
+const WEARS: Record<string, string[]> = {
+  jordan: ['Kinesiology', 'Sigma Chi'], priya: ['Biology', 'Pre-Med', 'Run Club'], marcus: ['Finance', 'Phi Delta Theta'],
+  ava: ['Environmental Science', 'Climbing Club'], tomas: ['Mechanical Engineering', 'IM Soccer'], kayla: ['Exercise Science', 'Alpha Phi'],
+  ethan: ['Civil Engineering', 'Club Triathlon'], nia: ['Nursing', 'Club Volleyball', 'Delta Gamma'], liam: ['Undeclared'],
+  sofia: ['Marketing', 'Run Club', 'Alpha Phi'], devin: ['Sport Management', 'Club Rugby'],
+  hannah: ['Psychology', 'Public Health'], caleb: ['Computer Science'], riley: ['Communication', 'Ultimate Frisbee'],
+};
+// Demo awards (the Founder crown is Max's alone, so it never goes to a made-up student).
+const DEMO_AWARDS: [student: string, award: string][] = [['priya', 'meetup-host'], ['liam', 'meetup-host'], ['kayla', 'pilot-crew'], ['jordan', 'pilot-crew']];
 
 const LIFT_DAYS: { title: string; exercises: [string, number, number][] }[] = [
   { title: 'Push day', exercises: [['Bench press', 185, 5], ['Overhead press', 105, 8], ['Incline dumbbell press', 60, 10]] },
@@ -224,5 +257,13 @@ export function makeDemoState(now: Date = new Date()): AppState {
     ['umass-amherst', 9], ['uri', 4], ['quinnipiac', 6], ['bu', 3],
   ].flatMap(([schoolId, count]) => Array.from({ length: count as number }, (_, i) => ({ email: `student${i + 1}@${schoolId === 'umass-amherst' ? 'umass.edu' : schoolId === 'quinnipiac' ? 'quinnipiac.edu' : `${schoolId}.edu`}`, schoolId: schoolId as string, at: createdAt })));
 
-  return { ...emptyState(), students, follows, workouts, kudos, comments, groups, messages, meetups, waitlist, tags, photos };
+  const orgs: Org[] = [...baseOrgs(), ...CAMPUS_ORGS.map(([kind, name]) => ({ id: orgId(name), schoolId: PILOT_SCHOOL_ID, kind, name }))];
+  const known = new Set(orgs.map(o => o.id));
+  const badges: StudentBadge[] = Object.entries(WEARS).flatMap(([studentId, names]) => names
+    .map(name => (known.has(majorId(name)) ? majorId(name) : orgId(name)))
+    .filter(id => known.has(id))
+    .map(id => ({ studentId, orgId: id, at: createdAt })));
+  const studentAwards: StudentAward[] = DEMO_AWARDS.map(([studentId, awardId]) => ({ studentId, awardId, awardedBy: null, at: createdAt }));
+
+  return { ...emptyState(), students, follows, workouts, kudos, comments, groups, messages, meetups, waitlist, tags, photos, orgs, badges, studentAwards };
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, Meetup, Student, Workout, WorkoutPhoto, WorkoutTag } from './types';
+import type { AppState, Award, Comment, Follow, Group, GroupMessage, Kudos, Meetup, Org, Student, StudentAward, StudentBadge, Workout, WorkoutPhoto, WorkoutTag } from './types';
 
 // Reads and writes between Supabase rows and the app's AppState shapes. The server's
 // row-level security decides what comes back, so loading "everything" means everything this
@@ -7,7 +7,8 @@ import type { AppState, Comment, Follow, Group, GroupMessage, Kudos, Meetup, Stu
 
 export type Table =
   | 'students' | 'follows' | 'workouts' | 'workout_notes' | 'workout_tags' | 'workout_photos' | 'kudos' | 'comments'
-  | 'meetups' | 'meetup_attendees' | 'groups' | 'group_members' | 'group_messages';
+  | 'meetups' | 'meetup_attendees' | 'groups' | 'group_members' | 'group_messages'
+  | 'orgs' | 'student_badges' | 'awards' | 'student_awards';
 
 /** Which AppState lists a table change can affect, so a live change refetches only those. */
 export const TABLE_SLICES: Record<Table, Slice[]> = {
@@ -17,9 +18,13 @@ export const TABLE_SLICES: Record<Table, Slice[]> = {
   workout_tags: ['tags', 'workouts', 'kudos', 'comments', 'photos'], // a tag reveals the workout
   meetups: ['meetups'], meetup_attendees: ['meetups'],
   groups: ['groups'], group_members: ['groups', 'messages'], group_messages: ['messages'],
+  orgs: ['orgs'], student_badges: ['badges'], awards: ['awards'], student_awards: ['awards'],
 };
-export type Slice = 'students' | 'follows' | 'workouts' | 'kudos' | 'comments' | 'meetups' | 'groups' | 'messages' | 'tags' | 'photos';
-export const ALL_SLICES: Slice[] = ['students', 'follows', 'workouts', 'kudos', 'comments', 'meetups', 'groups', 'messages', 'tags', 'photos'];
+// 'awards' covers both the award list and who holds them. 'admins' never changes in the app
+// (the operator sets it), so it loads once per session.
+export type Slice = 'students' | 'follows' | 'workouts' | 'kudos' | 'comments' | 'meetups' | 'groups' | 'messages' | 'tags' | 'photos'
+  | 'orgs' | 'badges' | 'awards' | 'admins';
+export const ALL_SLICES: Slice[] = ['students', 'follows', 'workouts', 'kudos', 'comments', 'meetups', 'groups', 'messages', 'tags', 'photos', 'orgs', 'badges', 'awards', 'admins'];
 
 export const PHOTO_BUCKET = 'workout-photos';
 // Photos are private, so the app reads them through signed links. A day outlasts any
@@ -132,6 +137,22 @@ export async function load(db: SupabaseClient, slices: Slice[]): Promise<Partial
       createdAt: g.created_at, memberIds: (by.get(g.id) ?? []).map(m => m.student_id),
     }));
   }));
+  if (want.has('orgs')) jobs.push(rows(db.from('orgs').select('id, school_id, kind, name')).then(r => {
+    out.orgs = r.map((o): Org => ({ id: o.id, schoolId: o.school_id, kind: o.kind, name: o.name }));
+  }));
+  if (want.has('badges')) jobs.push(rows(db.from('student_badges').select('*').order('created_at')).then(r => {
+    out.badges = r.map((b): StudentBadge => ({ studentId: b.student_id, orgId: b.org_id, at: b.created_at }));
+  }));
+  if (want.has('awards')) jobs.push(Promise.all([
+    rows(db.from('awards').select('id, name, description, icon, tone, rank')),
+    rows(db.from('student_awards').select('*').order('created_at')),
+  ]).then(([as, held]) => {
+    out.awards = as.map((a): Award => ({ id: a.id, name: a.name, description: a.description, icon: a.icon, tone: a.tone, rank: a.rank }));
+    out.studentAwards = held.map((g): StudentAward => ({
+      studentId: g.student_id, awardId: g.award_id, awardedBy: g.awarded_by, at: g.created_at, ...(g.note ? { note: g.note } : {}),
+    }));
+  }));
+  if (want.has('admins')) jobs.push(rows(db.from('admins').select('student_id')).then(r => { out.adminIds = r.map(a => a.student_id); }));
 
   await Promise.all(jobs);
   return out;

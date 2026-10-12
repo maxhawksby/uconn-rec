@@ -300,10 +300,58 @@ check('Demo campus has shared workouts with photos and a pending request for Jor
 check('Saved v1 demo data upgrades: "played with" becomes accepted tags', () => {
   const v1 = { version: 1, workouts: [{ id: 'g', kind: 'sport', withIds: ['a', 'b'], startedAt: 'T' }, { id: 'l', kind: 'lift' }] };
   const v2 = MIG.migrate(v1);
-  assert.equal(v2.version, 2); assert.equal(v2.photos.length, 0);
+  assert.equal(v2.version, 3); assert.equal(v2.photos.length, 0);
   assert.deepEqual([...v2.tags.map(t => `${t.workoutId}:${t.studentId}:${t.status}`)], ['g:a:accepted', 'g:b:accepted']);
   assert.ok(!('withIds' in v2.workouts[0]));
-  assert.equal(MIG.migrate({ version: 2, x: 1 }).x, 1);
+  const v3 = MIG.migrate({ version: 2, x: 1 });
+  assert.equal(v3.x, 1); assert.equal(v3.version, 3);
+  assert.ok(v3.orgs.some(o => o.id === 'major-kinesiology') && v3.awards.some(a => a.id === 'founder'));
+  assert.deepEqual([v3.badges.length, v3.studentAwards.length, v3.adminIds.length], [0, 0, 0]);
+});
+check('Badges: wear campus orgs, two majors max, add a missing one once, never another campus', () => {
+  let s = signedIn(); const me = s.meId;
+  s = A.addBadge(s, 'major-kinesiology', ctx).state;
+  s = A.addBadge(s, 'major-nursing', ctx).state;
+  assert.throws(() => A.addBadge(s, 'major-biology', ctx), /two majors/);
+  s = A.addBadge(s, 'major-kinesiology', ctx).state; // again: no duplicate
+  const r = A.addNewBadge(s, { kind: 'club', name: '  Powerlifting   Club ' }, ctx); s = r.state;
+  assert.equal(r.result.created, true);
+  const again = A.addNewBadge(s, { kind: 'club', name: 'powerlifting club' }, ctx);
+  assert.equal(again.result.created, false); assert.equal(again.result.orgId, r.result.orgId);
+  assert.deepEqual([...S.badgesFor(s, me).map(o => o.name)], ['Kinesiology', 'Nursing', 'Powerlifting Club']);
+  const other = { id: 'org-x', schoolId: 'bu', kind: 'club', name: 'BU Club' };
+  assert.throws(() => A.addBadge({ ...s, orgs: [...s.orgs, other] }, 'org-x', ctx), /gone/);
+  assert.equal(S.searchOrgs(s, 'uconn', 'major', 'bio')[0].name, 'Biology');
+  assert.equal(S.searchOrgs(s, 'uconn', 'club', 'run club')[0].name, 'Run Club');
+  s = A.removeBadge(s, 'major-nursing').state;
+  assert.equal(S.badgesFor(s, me).length, 2);
+  for (const name of ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9', 'B1']) s = A.addNewBadge(s, { kind: 'team', name }, ctx).state;
+  assert.throws(() => A.addNewBadge(s, { kind: 'team', name: 'B2' }, ctx), /12 badges/);
+});
+check('Awards: only admins give and take back; new awards rank after the founder; top award is featured', () => {
+  let s = signedIn(); const me = s.meId;
+  assert.throws(() => A.giveAward(s, { studentId: 'jordan', award: 'meetup-host' }, ctx), /admins/);
+  s = { ...s, adminIds: [me] };
+  assert.equal(S.featuredAward(s, 'jordan').id, 'pilot-crew');
+  s = A.giveAward(s, { studentId: 'jordan', award: 'meetup-host', note: ' Ran 10 pickup games ' }, ctx).state;
+  assert.throws(() => A.giveAward(s, { studentId: 'jordan', award: 'meetup-host' }, ctx), /already has/);
+  const made = A.giveAward(s, { studentId: 'jordan', award: { name: 'Iron Streak', description: '30 days', icon: 'fire', tone: 'gold' } }, ctx); s = made.state;
+  assert.throws(() => A.giveAward(s, { studentId: 'priya', award: { name: 'iron streak', description: '', icon: 'fire', tone: 'gold' } }, ctx), /already an award/);
+  assert.equal(s.awards.find(a => a.id === made.result.awardId).rank, 100);
+  assert.deepEqual([...S.awardsFor(s, 'jordan').map(h => h.award.id)], ['pilot-crew', 'meetup-host', made.result.awardId]);
+  assert.equal(S.awardsFor(s, 'jordan')[1].grant.note, 'Ran 10 pickup games');
+  s = A.revokeAward(s, { studentId: 'jordan', awardId: 'pilot-crew' }).state;
+  assert.equal(S.featuredAward(s, 'jordan').id, 'meetup-host');
+  s = { ...s, studentAwards: [...s.studentAwards, { studentId: me, awardId: 'founder', awardedBy: null, at: NOW.toISOString() }] };
+  assert.equal(S.featuredAward(s, me).icon, 'crown');
+  assert.ok(S.isAdmin(s, me) && !S.isAdmin(s, 'jordan'));
+});
+check('Demo badges point at real orgs; nobody fictional wears the Founder crown', () => {
+  const s = D.makeDemoState(NOW);
+  assert.ok(s.badges.length >= 20 && s.badges.every(b => s.orgs.some(o => o.id === b.orgId) && S.studentById(s, b.studentId)));
+  assert.ok(s.students.every(st => S.badgesFor(s, st.id).length >= 1), 'every demo student wears a badge');
+  assert.ok(s.studentAwards.length && !s.studentAwards.some(g => g.awardId === 'founder'));
+  assert.ok(s.students.every(st => S.badgesFor(s, st.id).filter(o => o.kind === 'major').length <= 2));
 });
 check('Relative times round down (38 hours ago is 1d)', () => {
   const ago = mins => new Date(NOW.getTime() - mins * 60000).toISOString();

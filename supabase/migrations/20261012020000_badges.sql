@@ -61,7 +61,7 @@ create table public.awards (
   id text primary key default gen_random_uuid()::text,
   name text not null unique check (char_length(btrim(name)) between 2 and 40),
   description text not null default '' check (char_length(description) <= 140),
-  icon text not null check (char_length(icon) between 1 and 40), -- a MaterialCommunityIcons name (see src/feed/awards.tsx)
+  icon text not null check (char_length(icon) between 1 and 40), -- a MaterialCommunityIcons name (see src/profile/awards.tsx)
   tone text not null default 'gold' check (tone in ('gold', 'accent', 'ink', 'turf')),
   rank integer not null default 100,
   created_by uuid references public.students on delete set null default auth.uid(),

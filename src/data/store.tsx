@@ -30,7 +30,7 @@ const KEY = 'valence-state-v1';
 function isAppState(x: unknown): x is AppState {
   const s = x as AppState;
   return !!s && typeof s === 'object' && s.version === STATE_VERSION &&
-    (['students', 'workouts', 'kudos', 'comments', 'follows', 'meetups', 'groups', 'messages', 'waitlist', 'tags', 'photos'] as const).every(k => Array.isArray(s[k]));
+    (['students', 'workouts', 'kudos', 'comments', 'follows', 'meetups', 'groups', 'messages', 'waitlist', 'tags', 'photos', 'orgs', 'badges', 'awards', 'studentAwards', 'adminIds'] as const).every(k => Array.isArray(s[k]));
 }
 
 
@@ -93,6 +93,11 @@ function DemoStoreProvider({ children }: { children: React.ReactNode }) {
       removeTag: input => run(s => A.removeTag(s, input)),
       addPhoto: input => run(s => A.addPhoto(s, input, ctx())),
       removePhoto: id => run(s => A.removePhoto(s, id)),
+      addBadge: id => run(s => A.addBadge(s, id, ctx())),
+      removeBadge: id => run(s => A.removeBadge(s, id)),
+      addNewBadge: input => run(s => A.addNewBadge(s, input, ctx())),
+      giveAward: input => run(s => A.giveAward(s, input, ctx())),
+      revokeAward: input => run(s => A.revokeAward(s, input)),
       follow: id => run(s => A.follow(s, id, ctx())),
       unfollow: id => run(s => A.unfollow(s, id)),
       createMeetup: input => run(s => A.createMeetup(s, input, ctx())),

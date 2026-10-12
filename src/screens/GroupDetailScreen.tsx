@@ -11,6 +11,7 @@ import { KIND_INFO, chatRows, groupActivity, memberLabel } from '../groups/model
 import { KindTile, SectionHeader, Segmented } from '../groups/parts';
 import { Composer, DaySeparator, JoinBar, MessageBubble, useKeyboardShown } from '../groups/chat';
 import { ListCard, MeetupRow, WorkoutRow } from '../profile/parts';
+import { NameMark } from '../profile/awards';
 
 type Tab = 'chat' | 'members' | 'activity';
 
@@ -121,7 +122,7 @@ export function GroupDetailScreen({ route, navigation }: RootScreenProps<'GroupD
                     style={({ pressed }) => [styles.memberRow, i < members.length - 1 && styles.rowLine, pressed && styles.pressed]}>
                     <Avatar student={s} size={40} />
                     <View style={styles.flex}>
-                      <Text variant="bodyStrong">{s.firstName} {s.lastName}{s.id === me.id ? ' (you)' : ''}</Text>
+                      <NameMark student={s} label={`${s.firstName} ${s.lastName}${s.id === me.id ? ' (you)' : ''}`} />
                       <Text variant="small" color="muted">{s.classYear}</Text>
                     </View>
                     {s.id === group.createdBy ? <Text variant="eyebrow" color="muted">Founder</Text> : null}

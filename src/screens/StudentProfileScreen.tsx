@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { RootScreenProps } from '../navigation/types';
 import { useMe, useStore } from '../data/store';
-import { followerIds, followingIds, isFollowing, studentById, workoutsFor } from '../data/selectors';
+import { awardsFor, followerIds, followingIds, isAdmin, isFollowing, studentById, workoutsFor } from '../data/selectors';
 import { Button, EmptyState, Screen, Text, attempt } from '../ui';
 import { space } from '../theme';
 import { GroupCard, SectionHeader } from '../groups/parts';
 import { groupsInCommon, sharedInterests, statsFor } from '../profile/model';
 import { InterestChips, ListCard, RecordsList, StatBoard, WorkoutRow } from '../profile/parts';
 import { ProfileHeader } from '../profile/ProfileHeader';
+import { AwardList, AwardSheet } from '../profile/awards';
 
 const PREVIEW_HISTORY = 8;
 
@@ -16,6 +17,7 @@ export function StudentProfileScreen({ route, navigation }: RootScreenProps<'Stu
   const { state, actions } = useStore();
   const me = useMe();
   const [allHistory, setAllHistory] = useState(false);
+  const [awarding, setAwarding] = useState(false);
   const student = studentById(state, route.params.studentId);
 
   if (!student) {
@@ -35,6 +37,8 @@ export function StudentProfileScreen({ route, navigation }: RootScreenProps<'Stu
   const shared = sharedInterests(student, me);
   const common = groupsInCommon(state, me.id, student.id);
   const first = student.firstName;
+  const admin = isAdmin(state, me.id);
+  const awards = awardsFor(state, student.id);
 
   const toggleFollow = () => attempt(() => (following ? actions.unfollow(student.id) : actions.follow(student.id)), following ? "Couldn't unfollow" : "Couldn't follow");
 
@@ -56,6 +60,18 @@ export function StudentProfileScreen({ route, navigation }: RootScreenProps<'Stu
 
       <StatBoard stats={stats} />
       {!isMe ? <Text variant="tiny" color="muted" style={styles.caption}>Based on workouts {first} shares with you.</Text> : null}
+
+      {awards.length || (admin && student.schoolId === me.schoolId) ? (
+        <>
+          <SectionHeader title="Awards" count={awards.length} actionLabel={admin ? 'Give award' : undefined} onAction={() => setAwarding(true)} />
+          {awards.length ? (
+            <AwardList state={state} studentId={student.id} canRevoke={admin}
+              onRevoke={awardId => attempt(() => actions.revokeAward({ studentId: student.id, awardId }), "Couldn't take it back")} />
+          ) : (
+            <Text variant="small" color="muted">No awards yet.</Text>
+          )}
+        </>
+      ) : null}
 
       {!isMe ? (
         <>
@@ -109,6 +125,7 @@ export function StudentProfileScreen({ route, navigation }: RootScreenProps<'Stu
         <EmptyState icon="eye-off-outline" title="Nothing to show"
           body={following || isMe ? `${first} hasn't shared a workout with you yet.` : `Follow ${first} to see workouts they share with friends.`} />
       )}
+      {admin ? <AwardSheet visible={awarding} student={student} onClose={() => setAwarding(false)} /> : null}
     </Screen>
   );
 }

@@ -5,6 +5,7 @@ import type { Student } from '../data/types';
 import { colors, minTouch, radius, space, type } from '../theme';
 import { Avatar, Button, Icon, Text } from '../ui';
 import { clockTime, type ChatRow } from './model';
+import { NameMark } from '../profile/awards';
 
 const AVATAR = 28;
 const MESSAGE_MAX = 1000;
@@ -50,7 +51,11 @@ export function MessageBubble({ row, author, onPressAuthor }: BubbleProps) {
         </View>
       ) : null}
       <View style={[styles.msgCol, mine && styles.msgColMine]}>
-        {!mine && firstInRun ? <Text variant="tiny" color="muted" style={styles.name}>{author?.firstName ?? name}</Text> : null}
+        {!mine && firstInRun ? (
+          <View style={styles.name}>
+            {author ? <NameMark student={author} label={author.firstName} variant="tiny" color="muted" /> : <Text variant="tiny" color="muted">{name}</Text>}
+          </View>
+        ) : null}
         <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs,
           mine ? (lastInRun ? styles.tailMine : null) : (lastInRun ? styles.tailTheirs : null)]}>
           <Text variant="body" color={mine ? 'onBoard' : 'ink'}>{message.body}</Text>

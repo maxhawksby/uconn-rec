@@ -5,6 +5,11 @@
 const fs = require('fs'); const path = require('path'); const ts = require('typescript'); const vm = require('vm');
 const { spawnSync } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
+const { makeAdmin } = require('./make-admin.cjs');
+
+// Max's real account gets admin and the Founder crown whenever it exists (it doesn't right
+// after a reset: sign up in the app, then run `npm run make-admin -- <email> --founder`).
+const FOUNDER_EMAIL = 'maxwell.hawksby@uconn.edu';
 
 function load(file, cache = {}) {
   file = path.resolve(file); if (cache[file]) return cache[file];
@@ -66,9 +71,14 @@ async function main() {
     starts_at: m.startsAt, capacity: m.capacity, group_id: m.groupId ? uuid(m.groupId) : null, note: m.note ?? null, created_at: m.createdAt,
   }))));
   await must('attendees', db.from('meetup_attendees').upsert(demo.meetups.flatMap(m => m.attendeeIds.map(a => ({ meetup_id: uuid(m.id), student_id: uuid(a) }))), { ignoreDuplicates: true }));
+  // Campus orgs and badges. Majors are already in the database (the majors migration).
+  await must('orgs', db.from('orgs').insert(demo.orgs.filter(o => o.schoolId).map(o => ({ id: o.id, school_id: o.schoolId, kind: o.kind, name: o.name, created_at: demo.students[0].createdAt }))));
+  await must('badges', db.from('student_badges').insert(demo.badges.map(b => ({ student_id: uuid(b.studentId), org_id: b.orgId, created_at: b.at }))));
+  await must('awards', db.from('student_awards').insert(demo.studentAwards.map(g => ({ student_id: uuid(g.studentId), award_id: g.awardId, awarded_by: null, note: g.note ?? null, created_at: g.at }))));
   await must('waitlist', db.from('waitlist').insert(demo.waitlist.map(w => ({ email: w.email, school_id: w.schoolId, created_at: w.at }))));
 
   console.log(`Seeded ${demo.students.length} demo students, ${demo.workouts.length} workouts (${demo.tags.length} tags, ${demo.photos.length} photos), ${demo.groups.length} groups, ${demo.meetups.length} meetups.`);
+  if (await makeAdmin(db, FOUNDER_EMAIL, { founder: true })) console.log(`${FOUNDER_EMAIL} is an admin with the Founder crown.`);
   console.log(`Sign in as any of them, e.g. ${demo.students[0].email}. Codes arrive at ${local.MAILPIT_URL}`);
 }
 main().catch(e => { console.error(e.message); process.exitCode = 1; });

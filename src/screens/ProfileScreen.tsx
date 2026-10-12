@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import type { TabScreenProps } from '../navigation/types';
 import { useMe, useStore } from '../data/store';
-import { followerIds, followingIds, myGroups, workoutsFor } from '../data/selectors';
+import { awardsFor, followerIds, followingIds, myGroups, workoutsFor } from '../data/selectors';
 import { Button, EmptyState, Screen, Text, attempt } from '../ui';
 import { space } from '../theme';
 import { SectionHeader } from '../groups/parts';
@@ -10,6 +10,8 @@ import { statsFor } from '../profile/model';
 import { InterestChips, ListCard, RecordsList, StatBoard, SettingsRow, WorkoutRow } from '../profile/parts';
 import { ProfileHeader } from '../profile/ProfileHeader';
 import { EditProfileSheet } from '../profile/EditProfileSheet';
+import { BadgeSheet } from '../profile/badges';
+import { AwardList } from '../profile/awards';
 
 const PREVIEW_PRS = 5;
 const PREVIEW_HISTORY = 8;
@@ -18,6 +20,7 @@ export function ProfileScreen({ navigation }: TabScreenProps<'Profile'>) {
   const { state, actions, backend } = useStore();
   const me = useMe();
   const [editing, setEditing] = useState(false);
+  const [editingBadges, setEditingBadges] = useState(false);
   const [allPrs, setAllPrs] = useState(false);
   const [allHistory, setAllHistory] = useState(false);
 
@@ -49,11 +52,19 @@ export function ProfileScreen({ navigation }: TabScreenProps<'Profile'>) {
             { label: 'Followers', value: followerIds(state, me.id).length },
             { label: 'Following', value: followingIds(state, me.id).length },
           ]}
+          onEditBadges={() => setEditingBadges(true)}
           action={<Button label="Edit profile" icon="create-outline" variant="secondary" size="sm" onPress={() => setEditing(true)} />} />
       </View>
 
       <StatBoard stats={stats} />
       <Text variant="tiny" color="muted" style={styles.caption}>Week totals reset Monday. Streak counts days in a row with a workout.</Text>
+
+      {awardsFor(state, me.id).length ? (
+        <>
+          <SectionHeader title="Awards" count={awardsFor(state, me.id).length} />
+          <AwardList state={state} studentId={me.id} canRevoke={false} onRevoke={() => undefined} />
+        </>
+      ) : null}
 
       <SectionHeader title="Personal records" count={stats.prs.length}
         actionLabel={stats.prs.length > PREVIEW_PRS ? (allPrs ? 'Show fewer' : 'Show all') : undefined} onAction={() => setAllPrs(v => !v)} />
@@ -88,6 +99,7 @@ export function ProfileScreen({ navigation }: TabScreenProps<'Profile'>) {
       <Text variant="tiny" color="faint" center style={styles.footnote}>Valence is independent and not affiliated with any school.</Text>
 
       <EditProfileSheet visible={editing} me={me} onClose={() => setEditing(false)} />
+      <BadgeSheet visible={editingBadges} me={me} onClose={() => setEditingBadges(false)} />
     </Screen>
   );
 }

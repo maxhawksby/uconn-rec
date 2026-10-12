@@ -10,6 +10,7 @@ import { KudosButton } from './KudosButton';
 import { RouteSketch } from './RouteSketch';
 import { CrewAvatar, crewTitle } from './tags';
 import { CardPhoto } from './photos';
+import { NameMark } from '../profile/awards';
 import { workoutStats } from './stats';
 import { VISIBILITY_LABEL, bestSet, formatSet, fullName, plural } from './model';
 
@@ -49,7 +50,7 @@ export function AuthorRow({ author, tagged = [], workout, now, size = 40 }: { au
         style={({ pressed }) => [styles.author, pressed && styles.pressed]}>
         <CrewAvatar author={author} tagged={tagged} size={size} />
         <View style={styles.authorText}>
-          <Text variant="bodyStrong" numberOfLines={1}>{name}</Text>
+          <NameMark student={author} label={name} />
           <View style={styles.meta}>
             <SchoolBadge schoolId={author.schoolId} />
             <Text variant="tiny" color="muted" numberOfLines={1} style={styles.flexShrink}>

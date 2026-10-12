@@ -1,6 +1,6 @@
-import type { AppState, ClassYear, ID, NewGroup, NewMeetup, NewWorkout, Student, Workout, WorkoutTag } from './types';
+import type { AppState, AwardTone, ClassYear, ID, NewAward, NewGroup, NewMeetup, NewWorkout, OrgKind, Student, Workout, WorkoutTag } from './types';
 import { CLASS_YEARS } from './types';
-import { MAX_PHOTOS, canAddPhotos, normalizeEmail, signupGate, studentById, tagOf } from './selectors';
+import { MAX_BADGES, MAX_MAJORS, MAX_PHOTOS, canAddPhotos, isAdmin, normalizeEmail, orgsForSchool, signupGate, studentById, tagOf } from './selectors';
 
 // Pure state transitions. Each takes the current state and returns the next state plus an
 // optional result. The React store (store.tsx) wraps these; a Supabase repository will
@@ -203,6 +203,83 @@ export function deleteComment(state: AppState, commentId: ID): Result {
   const me = requireMe(state);
   if (!state.comments.some(c => c.id === commentId && c.studentId === me.id)) fail('You can only delete your own comments.');
   return { state: { ...state, comments: state.comments.filter(c => c.id !== commentId) }, result: undefined };
+}
+
+// ---------- Badges ----------
+
+const ORG_KINDS: OrgKind[] = ['major', 'greek', 'club', 'team'];
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Wear a major or org from your campus list. Up to two majors and twelve badges in all. */
+export function addBadge(state: AppState, orgId: ID, ctx: Ctx): Result {
+  const me = requireMe(state);
+  const org = orgsForSchool(state, me.schoolId).find(o => o.id === orgId) ?? fail('That badge is gone.');
+  const mine = state.badges.filter(b => b.studentId === me.id);
+  if (mine.some(b => b.orgId === orgId)) return { state, result: undefined };
+  const majors = mine.filter(b => state.orgs.find(o => o.id === b.orgId)?.kind === 'major').length;
+  if (org.kind === 'major' && majors >= MAX_MAJORS) fail('Pick up to two majors.');
+  if (mine.length >= MAX_BADGES) fail(`You can show up to ${MAX_BADGES} badges.`);
+  return { state: { ...state, badges: [...state.badges, { studentId: me.id, orgId, at: ctx.now }] }, result: undefined };
+}
+
+export function removeBadge(state: AppState, orgId: ID): Result {
+  const me = requireMe(state);
+  return { state: { ...state, badges: state.badges.filter(b => !(b.studentId === me.id && b.orgId === orgId)) }, result: undefined };
+}
+
+/** Adds a missing org to your campus list and wears it. An existing match is worn instead. */
+export function addNewBadge(state: AppState, input: { kind: OrgKind; name: string }, ctx: Ctx): Result<{ orgId: ID; created: boolean }> {
+  const me = requireMe(state);
+  if (!ORG_KINDS.includes(input.kind)) fail('Pick a kind of badge.');
+  const name = cleanText(input.name, 60, 'Name').replace(/\s+/g, ' ');
+  if (name.length < 2) fail('Name must be at least 2 characters.');
+  const existing = orgsForSchool(state, me.schoolId).find(o => o.kind === input.kind && sameName(o.name, name));
+  if (existing) return { state: addBadge(state, existing.id, ctx).state, result: { orgId: existing.id, created: false } };
+  const org = { id: ctx.id(), schoolId: me.schoolId, kind: input.kind, name };
+  const next = addBadge({ ...state, orgs: [...state.orgs, org] }, org.id, ctx).state;
+  return { state: next, result: { orgId: org.id, created: true } };
+}
+
+// ---------- Awards (admins only) ----------
+
+const AWARD_TONES: AwardTone[] = ['gold', 'accent', 'ink', 'turf'];
+
+function requireAdmin(state: AppState) {
+  const me = requireMe(state);
+  if (!isAdmin(state, me.id)) fail('Only Valence admins can give awards.');
+  return me;
+}
+
+/** Gives an existing award, or creates a new one and gives it. */
+export function giveAward(state: AppState, input: { studentId: ID; award: ID | NewAward; note?: string }, ctx: Ctx): Result<{ awardId: ID }> {
+  const me = requireAdmin(state);
+  const to = studentById(state, input.studentId) ?? fail('That student is gone.');
+  if (to.schoolId !== me.schoolId) fail('You can only give awards at your school.');
+  const note = input.note?.trim() ? cleanText(input.note, 140, 'Note') : undefined;
+  let awards = state.awards;
+  let awardId: ID;
+  if (typeof input.award === 'string') {
+    awardId = (awards.find(a => a.id === input.award) ?? fail('That award is gone.')).id;
+  } else {
+    const a = input.award;
+    const name = cleanText(a.name, 40, 'Award name');
+    if (name.length < 2) fail('Award name must be at least 2 characters.');
+    if (awards.some(x => sameName(x.name, name))) fail(`There's already an award called ${name}. Pick it from the list.`);
+    if (!a.icon) fail('Pick an icon.');
+    if (!AWARD_TONES.includes(a.tone)) fail('Pick a color.');
+    const description = a.description.trim();
+    if (description.length > 140) fail('Description must be 140 characters or fewer.');
+    awardId = ctx.id();
+    awards = [...awards, { id: awardId, name, description, icon: a.icon, tone: a.tone, rank: 100 }];
+  }
+  if (state.studentAwards.some(g => g.studentId === to.id && g.awardId === awardId)) fail(`${to.firstName} already has that award.`);
+  const grant = { studentId: to.id, awardId, awardedBy: me.id, note, at: ctx.now };
+  return { state: { ...state, awards, studentAwards: [...state.studentAwards, grant] }, result: { awardId } };
+}
+
+export function revokeAward(state: AppState, input: { studentId: ID; awardId: ID }): Result {
+  requireAdmin(state);
+  return { state: { ...state, studentAwards: state.studentAwards.filter(g => !(g.studentId === input.studentId && g.awardId === input.awardId)) }, result: undefined };
 }
 
 // ---------- Follows ----------

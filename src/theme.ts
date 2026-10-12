@@ -23,6 +23,8 @@ const light = {
   turfSoft: '#DDF1E6',
   danger: '#C4362B',
   dangerSoft: '#FBE3E0',
+  gold: '#9A6B00', // awards only: the Founder crown and other gold awards
+  goldSoft: '#FFF0C7',
   scrim: 'rgba(20,22,27,0.48)',
 };
 
@@ -33,7 +35,7 @@ const dark: Palette = {
   bg: '#0F1114', surface: '#181B20', sunken: '#22262D', line: '#2C3139', ink: '#F2F3F5', inkSoft: '#C9CDD4',
   muted: '#8D939D', faint: '#5E646E', accent: '#FF5FC0', accentPressed: '#FF4FB8', accentSoft: '#3D1530', onAccent: '#14161B', accentText: '#FF7ACB',
   board: '#000000', onBoard: '#F2F3F5', onBoardMuted: '#8D939D', turf: '#3DBA7A', turfSoft: '#163024', danger: '#FF6B5E',
-  dangerSoft: '#3A1C19', scrim: 'rgba(0,0,0,0.6)',
+  dangerSoft: '#3A1C19', gold: '#F2C14E', goldSoft: '#3A2E0E', scrim: 'rgba(0,0,0,0.6)',
 };
 
 export const palettes = { light, dark };

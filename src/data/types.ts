@@ -105,13 +105,26 @@ export type NewGroup = Pick<Group, 'name' | 'kind' | 'description'>;
 
 export type GroupMessage = { id: ID; groupId: ID; studentId: ID; body: string; at: ISODate };
 
+// Identity badges: a major or an organization a student belongs to. schoolId null means the
+// standard majors list every campus shares; anything else is one campus's own (students add them).
+export type OrgKind = 'major' | 'greek' | 'club' | 'team';
+export type Org = { id: ID; schoolId: ID | null; kind: OrgKind; name: string };
+export type StudentBadge = { studentId: ID; orgId: ID; at: ISODate };
+
+// Awards: accomplishment badges only admins give. The lowest rank a student holds shows next
+// to their name everywhere. icon: a MaterialCommunityIcons name from src/profile/awards.tsx.
+export type AwardTone = 'gold' | 'accent' | 'ink' | 'turf';
+export type Award = { id: ID; name: string; description: string; icon: string; tone: AwardTone; rank: number };
+export type NewAward = Pick<Award, 'name' | 'description' | 'icon' | 'tone'>;
+export type StudentAward = { studentId: ID; awardId: ID; awardedBy: ID | null; note?: string; at: ISODate };
+
 export type WaitlistEntry = { email: string; schoolId: ID; at: ISODate };
 
 // Sign-up in progress. The demo shows the code on screen; production emails it.
 export type PendingSignup = { email: string; schoolId: ID; code: string; verified: boolean; sentAt: ISODate };
 
 export type AppState = {
-  version: 2;
+  version: 3;
   meId: ID | null;
   pending: PendingSignup | null;
   students: Student[];
@@ -125,6 +138,11 @@ export type AppState = {
   waitlist: WaitlistEntry[];
   tags: WorkoutTag[];
   photos: WorkoutPhoto[];
+  orgs: Org[];
+  badges: StudentBadge[];
+  awards: Award[];
+  studentAwards: StudentAward[];
+  adminIds: ID[];
 };
 
 // Derived, read-only shapes returned by selectors.

@@ -27,6 +27,8 @@ College students logging lifts, runs, pickup games and classes, and checking wha
 - Pink text and icons on light surfaces use `accentText` (`#A3105F`); the neon itself is only a fill, or text on ink panels.
 - Neon pink means "the main thing to do here". Use it once per screen.
 - Every list designs its empty state with `EmptyState`, and says what to do next.
+- Gold (`gold` on `goldSoft`) is for awards only, such as the Founder crown. Nothing else is gold.
+- Badges come in two kinds. **Identity badges** (major, Greek life, clubs, teams) are quiet gray chips on the profile. **Awards** are admin-given; the top one (lowest rank) sits as a small icon right after the student's name everywhere the name appears (`NameMark`), and all of them show as tiles on the profile.
 - Schools appear as text (`SchoolBadge`) only. Never a logo, mascot or school color.
 - Dark mode: `palettes.dark` exists but M1 ships light. Don't hard-code light-only assumptions such as white text on `bg`.
 - Motion: one orchestrated entrance per screen at most. No sprinkled micro-animations.

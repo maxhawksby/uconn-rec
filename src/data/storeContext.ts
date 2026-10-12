@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { AppState, ID, NewGroup, NewMeetup, NewWorkout } from './types';
+import type { AppState, ID, NewAward, NewGroup, NewMeetup, NewWorkout, OrgKind } from './types';
 import type { ProfileInput } from './actions';
 
 // The store contract both backends implement (see store.tsx).
@@ -27,6 +27,12 @@ export type Actions = {
   removeTag(input: { workoutId: ID; studentId: ID }): void;
   addPhoto(input: { workoutId: ID; uri: string; mimeType?: string }): { photoId: ID }; // uri: a file the student picked
   removePhoto(photoId: ID): void;
+  // badges and awards
+  addBadge(orgId: ID): void;
+  removeBadge(orgId: ID): void;
+  addNewBadge(input: { kind: OrgKind; name: string }): { orgId: ID; created: boolean }; // adds a missing org to the campus list
+  giveAward(input: { studentId: ID; award: ID | NewAward; note?: string }): { awardId: ID }; // admins only
+  revokeAward(input: { studentId: ID; awardId: ID }): void; // admins only
   // people
   follow(studentId: ID): void;
   unfollow(studentId: ID): void;
