@@ -20,6 +20,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - **Meetups tab** replaces Classes. A student posts "pickup basketball at 7, need 4." Others join with one tap.
 - **Groups.** Student-made crews (dorms, clubs, teams, majors) with a group chat.
 - **Profile.** Streaks, weekly summary, personal records, and a school badge (text only, never a school logo).
+- **Badges.** Students add badges for their major and the organizations they're in (Greek life, clubs, teams), picked from a campus list they can add to. Badges are self-declared, like a bio. Admins award accomplishment badges in the app (Max wears a Founder crown); an awarded badge shows next to the student's name everywhere.
 - **Saved routines.** Save a workout like "Push day" as a routine. Starting it again fills in the exercises with last time's weights and reps, so there's a number to beat.
 - **Progress.** A Progress section on your profile: each exercise's best set and estimated max over time, weekly volume, and run pace trends.
 - **Workout on the lock screen.** While a workout is running, the lock screen (and the iPhone's Dynamic Island) shows the workout and its clock, and one tap opens it. Apple calls this a Live Activity; Android uses an ongoing notification. It needs our own test build, so it can't run in Expo Go.
@@ -64,6 +65,7 @@ UConn Rec declined to partner because they are committed to their vendor, Fusion
 - Max can tag a friend on a lift, the friend accepts on their phone, and both add a photo that shows on the shared post (milestone 2).
 - Max can record a walk outdoors and see the route on a map with distance and pace (milestone 3).
 - Max can join a challenge and see a leaderboard, and a friend who hasn't joined never sees a ranking (milestone 3).
+- Max can add his major and an organization to his profile, a friend sees them, and Max can give that friend an award that shows next to their name (milestone 2).
 - Max can save a lift as a routine, start it a week later with last time's numbers filled in, and see the exercise improve on his Progress section (milestone 3).
 - Max can start a lift, lock his phone, see the workout and its clock on the lock screen, and tap back into it (milestone 4).
 - Max can install the test build, connect Apple Health, and see an Apple Watch workout appear in the app (milestone 4).
